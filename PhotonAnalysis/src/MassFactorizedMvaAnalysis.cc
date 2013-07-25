@@ -212,7 +212,6 @@ void MassFactorizedMvaAnalysis::Init(LoopAll& l)
     std::sort(bdtCategoryBoundaries.begin(),bdtCategoryBoundaries.end(), std::greater<float>() );
     nInclusiveCategories_ = bdtCategoryBoundaries.size()-1;
 
-    nVBFCategories   = ((int)includeVBF)*( (mvaVbfSelection && !multiclassVbfSelection) ? mvaVbfCatBoundaries.size()-1 : nVBFEtaCategories*nVBFDijetJetCategories );
     if(includeVHlep){
         nVHlepCategories = nElectronCategories + nMuonCategories;
     }
@@ -220,9 +219,11 @@ void MassFactorizedMvaAnalysis::Init(LoopAll& l)
         nVHlepCategories = 2;
     }
     if(includeVHmet){
-    nVHmetCategories = nMetCategories;
+       nVHmetCategories = nMetCategories;
     }
     
+    nVBFCategories   = ((int)includeVBF)*( (mvaVbfSelection && !multiclassVbfSelection) ? mvaVbfCatBoundaries.size()-1 : nVBFEtaCategories*nVBFDijetJetCategories );
+
     std::sort(mvaVbfCatBoundaries.begin(),mvaVbfCatBoundaries.end(), std::greater<float>() );
     if (multiclassVbfSelection) {
         std::vector<int> vsize;
@@ -243,6 +244,15 @@ void MassFactorizedMvaAnalysis::Init(LoopAll& l)
         std::sort(multiclassVbfCatBoundaries0.begin(),multiclassVbfCatBoundaries0.end(), std::greater<float>() );
         std::sort(multiclassVbfCatBoundaries1.begin(),multiclassVbfCatBoundaries1.end(), std::greater<float>() );
         std::sort(multiclassVbfCatBoundaries2.begin(),multiclassVbfCatBoundaries2.end(), std::greater<float>() );
+    } else if ( twodVbf ) {
+       assert( twodVbfLeadId.size() == mvaVbfCatBoundaries.size() && twodVbfSubleadId.size() == mvaVbfCatBoundaries.size() );
+       l.rooContainer->AddObservable("CMS_hgg_mjj",minMjj,maxMjj);
+       for(size_t icat=0; icat<mvaVbfCatBoundaries.size(); ++icat) {
+           mvaVbfCatBoundaries[icat] = -mvaVbfCatBoundaries[icat];
+           twodCategories.push_back(nInclusiveCategories_+icat);
+           twodNbins.push_back(nbinsMjj);
+       }
+       std::sort(mvaVbfCatBoundaries.begin(),mvaVbfCatBoundaries.end(), std::greater<float>() );
     }
 
     nCategories_=(nInclusiveCategories_+nVBFCategories+nVHlepCategories+nVHmetCategories);
@@ -608,7 +618,7 @@ bool MassFactorizedMvaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float wei
                   << "], zeePtWeight[" << zeePtWeight.size() << "]" <<diphoton_id << std::endl;
             }
             for (int i=0; i<zeePtBinLowEdge.size(); i++) {
-            float zeePtBinHighEdge = 999.;
+            float zeePtBinHighEdge =999.;
             if (i<zeePtBinLowEdge.size()-1) zeePtBinHighEdge = zeePtBinLowEdge[i+1];
             if (ptHiggs>zeePtBinLowEdge[i] && ptHiggs<zeePtBinHighEdge) {
                 evweight *= zeePtWeight[i];

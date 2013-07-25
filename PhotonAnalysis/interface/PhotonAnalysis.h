@@ -339,7 +339,11 @@ class PhotonAnalysis : public BaseAnalysis
     std::vector<float> multiclassVbfCatBoundaries0;
     std::vector<float> multiclassVbfCatBoundaries1;
     std::vector<float> multiclassVbfCatBoundaries2;
-
+    bool twodVbf;
+    std::vector<float> twodVbfLeadId,twodVbfSubleadId;
+    int nbinsMjj;
+    float minMjj, maxMjj;
+    
     // Smearings / corrections and systematics
     bool  doMCSmearing, doSystematics;
 

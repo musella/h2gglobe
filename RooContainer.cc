@@ -92,10 +92,11 @@ void RooContainer::AddConstant(std::string name,double init){
   ws.import(temp,Silence());
 }
 // ----------------------------------------------------------------------------------------------------
-void RooContainer::AddObservable(std::string name,double xmin,double xmax){
+RooRealVar & RooContainer::AddObservable(std::string name,double xmin,double xmax){
     addRealVar(name,xmin,xmax);
     m_real_var_[name].setRange("FullObservableRange",xmin,xmax);
     addRealVar(getweightName(name),0.,1.0e6);
+    return m_real_var_[name];
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -313,18 +314,17 @@ void RooContainer::ConvolutePdf(std::string name, std::string f_pdf, std::string
 }
 */
 // ----------------------------------------------------------------------------------------------------
-void RooContainer::CreateDataSet(std::string name,std::string data_name,int nbins, double x1, double x2,
-				 std::vector<int> twoDcats, std::vector<std::string> namey,
-				 std::vector<int> nbinsy, std::vector<double> y1, std::vector<double> y2)
+void RooContainer::CreateDataSet(std::string name,std::string data_name,int nbins,
+				 std::vector<int> twoDcats, std::vector<std::string> namey, std::vector<int> nbinsy)
 {
 	for (int cat=0;cat<ncat;cat++){
 		std::string cat_name = getcatName(data_name,cat);
 		std::vector<int>::iterator itwod = find(twoDcats.begin(), twoDcats.end(), cat);
 		if( itwod == twoDcats.end() ) { 
-			createDataSet(name,cat_name,nbins,x1,x2);  
+			createDataSet(name,cat_name,nbins,-990,-990);  
 		} else {
 			int jcat = itwod - twoDcats.begin();
-			createDataSet2D(name,namey[jcat],cat_name,nbins,x1,x2,nbinsy[jcat],y1[jcat],y2[jcat]); 
+			createDataSet2D(name,namey[jcat],cat_name,nbins,-990,-990,nbinsy[jcat],-990,-990); 
 		}
 	}
 }

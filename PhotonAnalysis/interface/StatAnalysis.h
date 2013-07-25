@@ -83,7 +83,11 @@ class StatAnalysis : public PhotonAnalysis
     float phoidMvaCut;
     std::vector<double> zeePtBinLowEdge, zeePtWeight;
     std::vector<int> sigPointsToBook;
-    
+    std::vector<int> twodCategories;
+    std::vector<std::string> twodVariables;
+    std::vector<int> twodNbins;
+    std::vector<double> twodVariablesMin, twodVariablesMax;
+
     std::string kfacHist;
     std::string pdfWeightHist;
     std::string ptspinHist;
@@ -113,7 +117,7 @@ class StatAnalysis : public PhotonAnalysis
     bool VHmuevent, VHelevent, VBFevent, VHhadevent, VHmetevent;  //met at analysis step
     bool VHlep1event, VHlep2event;
     int VHelevent_cat;
-	int VHmuevent_cat;
+    int VHmuevent_cat;
     int VHmetevent_cat;
     double genLevWeight; 
     float sigmaMrv, sigmaMwv;

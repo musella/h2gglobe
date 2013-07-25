@@ -3852,7 +3852,7 @@ bool PhotonAnalysis::VBFTag2012(int & ijet1, int & ijet2,
 	    tag = l.ApplyCuts(0,1);
 	}
     }
-
+    
     if( mvaVbfSpin && (mvaVbfSelection || multiclassVbfSelection) )
     {
       myVBFSpin_Discriminant = tmvaVbfSpinReader_->EvaluateMVA(mvaVbfSpinMethod);

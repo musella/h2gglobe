@@ -70,7 +70,7 @@ class RooContainer {
     void MakeSystematicPdfs(bool save=true);
     void SaveRooDataHists(bool save=true);
     void MakeSystematicStudy(std::vector<std::string>,std::vector<int>);
-    void AddObservable(std::string,double,double);
+    RooRealVar & AddObservable(std::string,double,double);
     void AddConstant(std::string,double);
     void AddRealVar(std::string,double,double xmin=-10,double xmax=10);
     void AddFormulaVar(std::string,std::string,std::string);
@@ -94,10 +94,9 @@ class RooContainer {
    void SumBinnedDatasets(std::string,std::string,std::string,double,double, bool scale=true);
    void SumMultiBinnedDatasets(std::string,std::vector<std::string>,std::vector<double>,bool scale=true);
    void SumMultiBinnedDatasets(std::string,std::vector<std::string>,double,bool scale=true);
-   void CreateDataSet(std::string,std::string,int nbins,double x1=-990,double x2=-990,
+   void CreateDataSet(std::string,std::string,int nbins,
 		      std::vector<int> twoDcats=std::vector<int>(0), std::vector<std::string> namey=std::vector<std::string>(0),
-		      std::vector<int> nbinsy=std::vector<int>(0), 
-		      std::vector<double> y1=std::vector<double>(0), std::vector<double> y2=std::vector<double>(0));
+		      std::vector<int> nbinsy=std::vector<int>(0));
    void MakeSystematics(std::string,std::string,int);
 
    void FitToData(std::string,std::string 			
