@@ -7,6 +7,7 @@
 #include "TPaveText.h"
 #include "TLatex.h"
 #include "TH1F.h"
+#include "TH2F.h"
 #include "TF1.h"
 #include "TAxis.h"
 #include "TString.h"
@@ -93,7 +94,10 @@ class RooContainer {
    void SumBinnedDatasets(std::string,std::string,std::string,double,double, bool scale=true);
    void SumMultiBinnedDatasets(std::string,std::vector<std::string>,std::vector<double>,bool scale=true);
    void SumMultiBinnedDatasets(std::string,std::vector<std::string>,double,bool scale=true);
-   void CreateDataSet(std::string,std::string,int nbins,double x1=-990,double x2=-990); 
+   void CreateDataSet(std::string,std::string,int nbins,double x1=-990,double x2=-990,
+		      std::vector<int> twoDcats=std::vector<int>(0), std::vector<std::string> namey=std::vector<std::string>(0),
+		      std::vector<int> nbinsy=std::vector<int>(0), 
+		      std::vector<double> y1=std::vector<double>(0), std::vector<double> y2=std::vector<double>(0));
    void MakeSystematics(std::string,std::string,int);
 
    void FitToData(std::string,std::string 			
@@ -141,6 +145,8 @@ class RooContainer {
    bool save_systematics_data;
    bool verbosity_;
    bool save_roodatahists;
+   
+   void InputDataPoint2D(std::string data_name,int cat, double x, double y, double w); // to fill 2D variables with event weights
 
   private:
 
@@ -246,6 +252,19 @@ class RooContainer {
 
    RooWorkspace ws;   
    
+   void createDataSet2D(std::string, std::string, std::string,int nbinx, int nbiny, double x1,double x2, double y1, double y2);
+   std::map<std::string,std::string> data_obs_names2d_; 
+   std::map<std::string,RooRealVar*> m_data_varx_ptr_; 
+   std::map<std::string,RooRealVar*> m_data_vary_ptr_; 
+   std::map<std::string,int> binsx_;
+   std::map<std::string,int> binsy_;
+   std::map<std::string, double> m_varx_min_;
+   std::map<std::string, double> m_varx_max_;
+   std::map<std::string, double> m_vary_min_;
+   std::map<std::string, double> m_vary_max_;   
+
+   std::map<std::string, TH2F> m_th2f_;
+
 
 };
 

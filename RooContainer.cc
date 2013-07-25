@@ -313,11 +313,20 @@ void RooContainer::ConvolutePdf(std::string name, std::string f_pdf, std::string
 }
 */
 // ----------------------------------------------------------------------------------------------------
-void RooContainer::CreateDataSet(std::string name,std::string data_name,int nbins, double x1, double x2){
-  for (int cat=0;cat<ncat;cat++){
-    std::string cat_name = getcatName(data_name,cat);
-    createDataSet(name,cat_name,nbins,x1,x2);  
-  }
+void RooContainer::CreateDataSet(std::string name,std::string data_name,int nbins, double x1, double x2,
+				 std::vector<int> twoDcats, std::vector<std::string> namey,
+				 std::vector<int> nbinsy, std::vector<double> y1, std::vector<double> y2)
+{
+	for (int cat=0;cat<ncat;cat++){
+		std::string cat_name = getcatName(data_name,cat);
+		std::vector<int>::iterator itwod = find(twoDcats.begin(), twoDcats.end(), cat);
+		if( itwod == twoDcats.end() ) { 
+			createDataSet(name,cat_name,nbins,x1,x2);  
+		} else {
+			int jcat = itwod - twoDcats.begin();
+			createDataSet2D(name,namey[jcat],cat_name,nbins,x1,x2,nbinsy[jcat],y1[jcat],y2[jcat]); 
+		}
+	}
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -3233,7 +3242,7 @@ void RooContainer::makeSystematics(std::string observable,std::string s_name, in
 
         double x1 = hist->GetBinLowEdge(1); 
         double x2 = hist->GetBinLowEdge(hist->GetNbinsX()+1); 
-
+	
         createDataSet(observable,name_up,bins,x1,x2);
         createDataSet(observable,name_dn,bins,x1,x2);
 
@@ -3325,6 +3334,123 @@ std::vector<std::string> RooContainer::GetTH1FNames(){
 	return ret;
 
 }
+
+void RooContainer::createDataSet2D(std::string namex,std::string namey, std::string data_name,int nbinx, int nbiny, double x1,double x2, double y1, double y2){
+
+  //cout<<"JTao in createDataSet2D..."<<endl;
+
+  std::map<std::string,RooRealVar>::const_iterator testx=m_real_var_.find(namex);
+  std::map<std::string,RooRealVar>::const_iterator testy=m_real_var_.find(namey);
+  if (testx != m_real_var_.end() && testy!=m_real_var_.end()){ 
+
+    binsx_[data_name] = nbinx;
+    binsy_[data_name] = nbiny;
+    m_data_var_ptr_[data_name] = &(m_real_var_[namex]);
+    m_data_varx_ptr_[data_name] = &(m_real_var_[namex]);
+    m_data_vary_ptr_[data_name] = &(m_real_var_[namey]);
+    m_weight_var_ptr_[data_name] = &(m_real_var_[getweightName(namex)]);
+      
+    double xmin = (testx->second).getMin();
+    double xmax = (testx->second).getMax();
+    double ymin = (testy->second).getMin();
+    double ymax = (testy->second).getMax();
+    double r1,r2;
+    int number_of_bins;
+    double ry1,ry2;
+    int number_of_bins_y;
+
+    if (x1 < -990 || x2 < -990 || x1 < xmin || x2 > xmax){
+      r1 = xmin;
+      r2 = xmax;
+    } else {
+      r1 = x1;
+      r2 = x2;
+    }
+    if (y1 < -990 || y2 < -990 || y1 < ymin || y2 > ymax){
+      ry1 = ymin;
+      ry2 = ymax;
+    } else {
+      ry1 = y1;
+      ry2 = y2;
+    }
+
+    m_var_min_.insert(pair<std::string, double >(data_name,r1));
+    m_var_max_.insert(pair<std::string, double >(data_name,r2));
+    m_varx_min_.insert(pair<std::string, double >(data_name,r1));
+    m_varx_max_.insert(pair<std::string, double >(data_name,r2));
+    m_vary_min_.insert(pair<std::string, double >(data_name,ry1));
+    m_vary_max_.insert(pair<std::string, double >(data_name,ry2));
+           
+    RooDataSet data_tmp(data_name.c_str(),data_name.c_str(),RooArgSet((*testx).second, (*testy).second, *m_weight_var_ptr_[data_name]),getweightName(namex).c_str());
+    data_.insert(std::pair<std::string,RooDataSet>(data_name,data_tmp));
+    data_obs_names2d_.insert(std::pair<std::string,std::string>(data_name,namex));
+
+
+    number_of_bins = nbinx;
+    number_of_bins_y = nbiny;
+
+    TH1F tmp_hist(Form("th1f_%s",data_name.c_str()),namex.c_str(),number_of_bins,r1,r2);
+    tmp_hist.Sumw2();
+    if (blind_data) {tmp_hist.SetLineColor(0); tmp_hist.SetMarkerColor(0);} // Invisible points for bliding
+    tmp_hist.GetYaxis()->SetTitle(Form("Events / (%.3f)",tmp_hist.GetBinWidth(1)));
+    m_th1f_[data_name] = tmp_hist;
+    
+    TH2F tmp_hist2d(Form("th2f_%s",data_name.c_str()),Form(";%s;%s", namex.c_str(), namey.c_str()),number_of_bins,r1,r2, number_of_bins_y, ry1,ry2);
+    tmp_hist2d.Sumw2();
+    if (blind_data) {tmp_hist2d.SetLineColor(0); tmp_hist2d.SetMarkerColor(0);} // Invisible points for bliding
+    m_th2f_[data_name] = tmp_hist2d;
+
+    if (verbosity_){
+      cout << "RooContainer::CreateDataSet 2D -- Created RooDataSet 2D from " << namex <<":"<<namey
+	   << " with name " << data_name <<endl;
+      cout << "RooContainer::CreateDataSet -- Created TH2F from " << data_name << endl;
+    }
+
+  } else {
+    std::cerr << "WARNING -- RooContainer::CreateDataSet 2D -- No RealVar found Named "
+	      << namex << " : " << namey
+	      << " CRASH Expected soon!!! -- WARNING"
+	      << std::endl;
+  }	
+}
+
+
+void RooContainer::InputDataPoint2D(std::string data_name, int cat, double x, double y, double w){
+
+  //cout<<"JTao in InputDataPoint2D..."<<endl;
+
+  if (cat < 0) return;
+  if (cat>-1 && cat<ncat){
+    // std::string name = getcatName(var_name,cat);
+    std::string name = getcatName(data_name,cat);
+    //cout<<"JTao: name = "<<name<<endl;
+    std::map<std::string, RooDataSet>::iterator it_var  = data_.find(name);
+    if (it_var == data_.end()) 
+      std::cerr << "WARNING -- RooContainer::InputDataPoint -- No DataSet named "<< name << std::endl;
+    else{
+      double min_x = m_varx_min_[name];
+      double max_x = m_varx_max_[name];
+      double min_y = m_vary_min_[name];
+      double max_y = m_vary_max_[name];
+
+      if (x > min_x && x < max_x && y>min_y && y<max_y){
+	*(m_data_varx_ptr_[name]) = x;
+	*(m_data_vary_ptr_[name]) = y;
+	((*it_var).second).add(RooArgSet(*(m_data_varx_ptr_[name]), *(m_data_vary_ptr_[name])),w);
+
+	m_th1f_[name].Fill(x,w);
+	m_th2f_[name].Fill(x,y,w);
+      }
+    }
+  }
+
+  else {
+    std::cerr << "WARNING -- RooContainer::InputDataPoint -- No Category Number " << cat 
+	      << ", category must be from 0 to " << ncat-1
+	      << std::endl;
+  }
+}
+
 
 //EOF
 
