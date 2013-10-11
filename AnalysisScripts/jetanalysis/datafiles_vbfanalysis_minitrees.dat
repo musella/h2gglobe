@@ -38,7 +38,7 @@ typ=+21   ind=94 draw=1  Nam=qcd_40_8TeV_ff 		CaDir=%(mc)s/QCD_Pt-40_doubleEMEnr
 typ=+32    ind=101 draw=1  Nam=gjet_20_8TeV_pf    	CaDir=%(mc)s/GJet_Pt-20to40_doubleEMEnriched_TuneZ2star_8TeV-pythia6_pf xsec=150.34 kfac=1.3  scal=1.
 typ=+42    ind=104 draw=1  Nam=gjet_40_8TeV_pf    	CaDir=%(mc)s/GJet_Pt40_doubleEMEnriched_TuneZ2star_8TeV_ext-pythia6_pf xsec=478.58 kfac=1.3  scal=1.
 
-typ=+5    ind=96 draw=1  Nam=diphojet_Box_8TeV 		CaDir=%(mc)s/DiPhotonJetsBox_M60_8TeV-sherpa_Summer12_DR53X-PU_RD1_START53_V7N-v1 xsec=75.39   kfac=1.15  scal=1.
+typ=+5    ind=96 draw=1  Nam=diphojet_Box_8TeV 		CaDir=%(mc)s/DiPhotonJetsBox_M60_8TeV-sherpa_Summer12_DR53X-PU_RD1_START53_V7N-v1 xsec=120.354 kfac=1.  scal=3.71
 
 #
 # DY MC
@@ -63,4 +63,4 @@ runZeeValidation=0
 ## 	analyzer <class_name> <config_file>
 ## 
 ## analyzer PhotonAnalysis photonanalysis.dat	
-analyzer VbfAnalysis photonanalysis.dat analysis_settings.dat  massfac_mva_binned/massfactorizedmvaanalysis.dat  jetanalysis/vbfanalysis.dat requireTwoJets=1 sigProcessesToBook=ggh,ggh_minlo,vbf,wzh
+analyzer VbfAnalysis photonanalysis.dat analysis_settings.dat  massfac_mva_binned/massfactorizedmvaanalysis.dat  jetanalysis/vbfanalysis.dat requireTwoJets=0 sigProcessesToBook=ggh,ggh_minlo,vbf,wzh
