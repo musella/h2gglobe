@@ -1631,11 +1631,10 @@ int LoopAll::ApplyCutsFill(int icat, int cutset, int & ncutsapplied, int & ncuts
   int passcuts=1;
   for (unsigned int i=0; i<cutContainer.size(); i++) {
     if(cutContainer[i].finalcut==cutset) {
-      //MARCO if(cutContainer[i].useit) 
       {
-
-	//cout<<"ApplyCutsFill "<<cutContainer[i].finalcut<<" "<<cutContainer[i].useit<<" "<<endl;
-
+	
+	//cout<<"ApplyCutsFill "<<cutContainer[i].finalcut<<" "<<cutContainer[i].useit<<" "<<cutContainer[i].name<<endl;
+	
 	if(cutContainer[i].ncat>1) {
 	  if(ncats==0) ncats=cutContainer[i].ncat;
 	  if(cutContainer[i].ncat!=ncats) {
@@ -1650,6 +1649,7 @@ int LoopAll::ApplyCutsFill(int icat, int cutset, int & ncutsapplied, int & ncuts
 	if(cutContainer[i].ncat<=1) {
 	  icatuse=0;
 	}
+	//std::cout << i << " " << icatuse << std::endl;
 	if(ApplyCut(i,icatuse)) {
 	  ncutspassed++;
 	  tmppasscut[ntmpcuts]=1;

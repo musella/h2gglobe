@@ -449,6 +449,10 @@ void MassFactorizedMvaAnalysis::Init(LoopAll& l)
     if( photonLevel2011IDMVA_EB != "" && photonLevel2011IDMVA_EE != "" ) {
     	l.tmvaReaderID_MIT_Barrel->BookMVA("AdaBoost",photonLevel2011IDMVA_EB.c_str());
     	l.tmvaReaderID_MIT_Endcap->BookMVA("AdaBoost",photonLevel2011IDMVA_EE.c_str());
+	assert(bdtTrainingType == "Old7TeV");
+    } else if (photonLevel2013_7TeV_IDMVA_EB != "" && photonLevel2013_7TeV_IDMVA_EE != "" ) {
+    	l.tmvaReaderID_2013_7TeV_MIT_Barrel->BookMVA("AdaBoost",photonLevel2013_7TeV_IDMVA_EB.c_str());
+    	l.tmvaReaderID_2013_7TeV_MIT_Endcap->BookMVA("AdaBoost",photonLevel2013_7TeV_IDMVA_EE.c_str());
     } else {
     	assert( ! run7TeV4Xanalysis );
     }
@@ -710,8 +714,8 @@ bool MassFactorizedMvaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float wei
                 if(eventweight*sampleweight!=0) myweight=eventweight/sampleweight;
                 
                 VBFevent= ( run7TeV4Xanalysis ? 
-                    VBFTag2011(l, diphotonVBF_id, &smeared_pho_energy[0], true, eventweight, myweight) :
-                    VBFTag2012(vbfIjet1, vbfIjet2, l, diphotonVBF_id, &smeared_pho_energy[0], true, eventweight, myweight) );
+			    VBFTag2011(l, diphotonVBF_id, &smeared_pho_energy[0], true, eventweight, myweight) :
+			    VBFTag2012(vbfIjet1, vbfIjet2, l, diphotonVBF_id, &smeared_pho_energy[0], true, eventweight, myweight) );
             }
         }
 
@@ -1337,7 +1341,7 @@ void MassFactorizedMvaAnalysis::fillZeeControlPlots(const TLorentzVector & lead_
     l.FillHist("mass",0, mass, evweight);
     if (category>-1) l.FillHist("mass",category+1, mass, evweight);
     l.FillHist("mass_basecat",selectioncategory, mass, evweight);
-    if (diphobdt_output>-0.05) {
+    if (passMVA) {
 	l.FillHist("mass_passDiphobdt",0, mass, evweight);
 	l.FillHist("mass_basecat_passDiphobdt",selectioncategory, mass, evweight);
     } else {
@@ -1348,7 +1352,7 @@ void MassFactorizedMvaAnalysis::fillZeeControlPlots(const TLorentzVector & lead_
 	l.FillHist("mass_basecat_passCiC",selectioncategory, mass, evweight);
     }
 
-    if (ptHiggs<20.) {
+    if (ptHiggs < 20.) {
 	l.FillHist("mass_pt0to20",0, mass, evweight);
 	if (passCiC) l.FillHist("mass_passCiC_pt0to20",0, mass, evweight);
     } else if (ptHiggs<40.) {
@@ -1408,11 +1412,12 @@ void MassFactorizedMvaAnalysis::fillZeeControlPlots(const TLorentzVector & lead_
 	l.FillHist("bdtout",selectioncategory+1,diphobdt_output,evweight);
 	l.FillHist("bdtout_up",selectioncategory+1,diphobdt_output_up,evweight);
 	l.FillHist("bdtout_down",selectioncategory+1,diphobdt_output_down,evweight);
-	if (fabs(lead_p4.Eta() < 1.4442 ) && fabs(sublead_p4.Eta()<1.4442)){
-	    l.FillHist("bdtoutEB",0,diphobdt_output,evweight);
-	    l.FillHist("bdtoutEB_up",0,diphobdt_output_up,evweight);
+
+	if (fabs(lead_p4.Eta()) < 1.4442 && fabs(sublead_p4.Eta())<1.4442) {
+	    l.FillHist("bdtoutEB", 0, diphobdt_output, evweight);
+	    l.FillHist("bdtoutEB_up", 0, diphobdt_output_up, evweight);
 	    l.FillHist("bdtoutEB_down",0,diphobdt_output_down,evweight);
-	} else if (fabs(lead_p4.Eta() > 1.566 ) && fabs(sublead_p4.Eta()>1.566)){
+	} else if (fabs(lead_p4.Eta()) > 1.566 && fabs(sublead_p4.Eta())>1.566) {
 	    l.FillHist("bdtoutEE",0,diphobdt_output,evweight);
 	    l.FillHist("bdtoutEE_up",0,diphobdt_output_up,evweight);
 	    l.FillHist("bdtoutEE_down",0,diphobdt_output_down,evweight);

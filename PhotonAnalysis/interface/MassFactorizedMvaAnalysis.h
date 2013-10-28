@@ -75,6 +75,8 @@ class MassFactorizedMvaAnalysis : public StatAnalysis
     std::string eventLevelMvaUCSD   ;                    
     std::string photonLevel2011IDMVA_EB;
     std::string photonLevel2011IDMVA_EE;
+    std::string photonLevel2013_7TeV_IDMVA_EB;
+    std::string photonLevel2013_7TeV_IDMVA_EE;
     std::string eventLevelMvaMIT    ;
     std::string photonLevel2012IDMVA_EB;
     std::string photonLevel2012IDMVA_EE;
