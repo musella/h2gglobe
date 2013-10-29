@@ -316,7 +316,7 @@ Float_t LoopAll::photonIDMVA2013(Int_t iPhoton, Int_t vtx, TLorentzVector &p4, c
     tmva_photonid_r9           = pho_r9[iPhoton];
     tmva_photonid_lambdaratio  = pho_lambdaratio[iPhoton];
   
-//  tmva_photonid_s4ratio  = pho_e2x2[iPhoton]/pho_e5x5[iPhoton];
+    //  tmva_photonid_s4ratio  = pho_e2x2[iPhoton]/pho_e5x5[iPhoton];
   tmva_photonid_s4ratio  = pho_s4ratio[iPhoton];
   tmva_photonid_eventrho = rho_algo1;
   tmva_photonid_sceta    = ((TVector3*)sc_xyz->At(pho_scind[iPhoton]))->Eta(); 
@@ -354,18 +354,24 @@ Float_t LoopAll::photonIDMVA2013_7TeV(Int_t iPhoton, Int_t vtx, TLorentzVector &
     tmva_photonid_r9           = pho_r9[iPhoton];
     tmva_photonid_lambdaratio  = pho_lambdaratio[iPhoton];
   
-//  tmva_photonid_s4ratio  = pho_e2x2[iPhoton]/pho_e5x5[iPhoton];
-  tmva_photonid_s4ratio  = pho_s4ratio[iPhoton];
-  tmva_photonid_eventrho = rho_algo1;
-  tmva_photonid_sceta    = ((TVector3*)sc_xyz->At(pho_scind[iPhoton]))->Eta(); 
-  tmva_photonid_ESEffSigmaRR = pho_ESEffSigmaRR[iPhoton];
+    tmva_photonid_s4ratio  = pho_s4ratio[iPhoton];
+    tmva_photonid_eventrho = rho_algo1;
+    tmva_photonid_sceta    = ((TVector3*)sc_xyz->At(pho_scind[iPhoton]))->Eta(); 
+    tmva_photonid_ESEffSigmaRR = pho_ESEffSigmaRR[iPhoton];
+    
+    //std::cout << tmva_photonid_pfchargedisogood03 << " "  << tmva_photonid_pfchargedisobad03 << " " 
+    //	      << tmva_photonid_pfphotoniso03 << " "<< tmva_photonid_sieie << " " << tmva_photonid_sieip << " " 
+    //	      << tmva_photonid_etawidth << " " << tmva_photonid_scrawe << " " << tmva_photonid_phiwidth << " " 
+    //	      << tmva_photonid_lambdaratio << " " <<  tmva_photonid_s4ratio  << " " << tmva_photonid_eventrho << " "
+    //	      << tmva_photonid_ESEffSigmaRR << std::endl;
+      
 
-  if (pho_isEB[iPhoton]) {
-    mva = tmvaReaderID_2013_7TeV_MIT_Barrel->EvaluateMVA("AdaBoost");
-  } else {
-    mva = tmvaReaderID_2013_7TeV_MIT_Endcap->EvaluateMVA("AdaBoost");
-  }
-
+    if (pho_isEB[iPhoton]) {
+      mva = tmvaReaderID_2013_7TeV_MIT_Barrel->EvaluateMVA("AdaBoost");
+    } else {
+      mva = tmvaReaderID_2013_7TeV_MIT_Endcap->EvaluateMVA("AdaBoost");
+    }
+    
     return mva;
 }
 
@@ -408,19 +414,19 @@ Float_t LoopAll::photonIDMVA2012(Int_t iPhoton, Int_t vtx, TLorentzVector &p4, c
 }
 
 Float_t LoopAll::photonIDMVA(Int_t iPhoton, Int_t vtx, TLorentzVector &p4, const char* type)  {
-	TString t(type);
-	if( t == "MIT" ) {
-	  return photonIDMVA2013(iPhoton,vtx,p4,"MIT");
-	} else if( t == "Moriond2013" ) {
-	  return photonIDMVA2012(iPhoton,vtx,p4,"MIT");
-	} else if( t == "Old7TeV") {
-	  return photonIDMVA2011(iPhoton, vtx, p4, "MIT");
-	} else if( t == "2013_7TeV") {
-	  return photonIDMVA2013_7TeV(iPhoton, vtx, p4, "MIT");
-	} else {
-		std::cerr << "Uknown BDT type " << t << std::endl;
-		assert(0);
-	}
+  TString t(type);
+  if( t == "MIT" ) {
+    return photonIDMVA2013(iPhoton,vtx,p4,"MIT");
+  } else if( t == "Moriond2013" ) {
+    return photonIDMVA2012(iPhoton,vtx,p4,"MIT");
+  } else if( t == "Old7TeV") {
+    return photonIDMVA2011(iPhoton, vtx, p4, "MIT");
+  } else if( t == "2013_7TeV") {
+    return photonIDMVA2013_7TeV(iPhoton, vtx, p4, "MIT");
+  } else {
+    std::cerr << "Uknown BDT type " << t << std::endl;
+    assert(0);
+  }
 }
 
 Float_t LoopAll::photonIDMVA2011(Int_t iPhoton, Int_t vtx, TLorentzVector &p4, const char* type)  {
@@ -533,14 +539,13 @@ Float_t LoopAll::diphotonMVA(Int_t leadingPho, Int_t subleadingPho, Int_t vtx, f
 	    tmva_dipho_MIT_ph1mva = photonIDMVA2013(leadingPho,vtx, leadP4, "MIT");
 	    tmva_dipho_MIT_ph2mva = photonIDMVA2013(subleadingPho,vtx, subleadP4, "MIT");
 	  } else if (bdtType == "Old7TeV") {
-	    tmva_dipho_MIT_ph1mva = photonIDMVA2012(leadingPho,vtx, leadP4, "MIT");
-	    tmva_dipho_MIT_ph2mva = photonIDMVA2012(subleadingPho,vtx, subleadP4, "MIT");
+	    tmva_dipho_MIT_ph1mva = photonIDMVA2011(leadingPho,vtx, leadP4, "MIT");
+	    tmva_dipho_MIT_ph2mva = photonIDMVA2011(subleadingPho,vtx, subleadP4, "MIT");
 	  } else if (bdtType == "2013_7TeV") {
 	    tmva_dipho_MIT_ph1mva = photonIDMVA2013_7TeV(leadingPho,vtx, leadP4, "MIT");
 	    tmva_dipho_MIT_ph2mva = photonIDMVA2013_7TeV(subleadingPho,vtx, subleadP4, "MIT");
-	    
-	  } else if (bdtType == "Moriond2013") {
-	    tmva_dipho_MIT_ph1mva = photonIDMVA2011(leadingPho,vtx, leadP4, "MIT");
+   	  } else if (bdtType == "Moriond2013") {
+	    tmva_dipho_MIT_ph1mva = photonIDMVA2012(leadingPho,vtx, leadP4, "MIT");
 	    tmva_dipho_MIT_ph2mva = photonIDMVA2012(subleadingPho,vtx, subleadP4, "MIT");
 	  } else {
 	    std::cerr << "No valid BDT type..." << std::endl;
@@ -3372,7 +3377,7 @@ bool LoopAll::PhotonMITPreSelection2011( int photon_index, int vertex_index, flo
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 int LoopAll::PhotonCiCPFSelectionLevel( int photon_index, int vertex_index, std::vector<std::vector<bool> > & ph_passcut, int ncategories, 
                                         int doSublead, float *pho_energy_array ) {
-    assert( version >= 12 );
+    assert( version >= 13 );
     if( ! runCiC ) {
         switch(ncategories) {
         case (4):

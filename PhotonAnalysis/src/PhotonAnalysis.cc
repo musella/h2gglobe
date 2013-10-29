@@ -680,7 +680,7 @@ void PhotonAnalysis::Init(LoopAll& l)
 
     /// // trigger
 
-    if (l.runZeeValidation && run7TeV4Xanalysis != 1) {
+    if (l.runZeeValidation && l.sqrtS != 7) {
         
         triggerSelections.push_back(TriggerSelection(1,-1));
         if (useRunDTriggersForZee) {
@@ -2262,7 +2262,7 @@ bool PhotonAnalysis::SkimEvents(LoopAll& l, int jentry)
 
     // do not run trigger selection on MC
     int filetype = l.itype[l.current];
-    bool skipTrigger = !doTriggerSelection || ( filetype != 0 && !l.runZeeValidation ) || triggerSelections.empty() || (run7TeV4Xanalysis == 1 && filetype != 0);
+    bool skipTrigger = !doTriggerSelection || ( filetype != 0 && !l.runZeeValidation ) || triggerSelections.empty() || (l.sqrtS == 7 && filetype != 0);
     
     if( ! skipTrigger ) {
         // get the trigger selection for this run
@@ -2274,7 +2274,7 @@ bool PhotonAnalysis::SkimEvents(LoopAll& l, int jentry)
         }
 
 	// get the trigger data
-        if( l.version < 12 ) {
+        if( l.version < 13 ) {
             l.b_hlt1_bit->GetEntry(jentry);
             l.b_hlt_path_names_HLT1->GetEntry(jentry);
             if( !  isel->pass( *(l.hlt_path_names_HLT1), *(l.hlt1_bit) ) ) {
