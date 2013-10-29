@@ -32,4 +32,4 @@ treevariables massfac_mva_binned/treevariables_optree.dat
 ## 
 ## analyzer PhotonAnalysis photonanalysis.dat
 
-analyzer MassFactorizedMvaAnalysis photonanalysis.dat jun21rereco_7TeV/analysis_settings.dat jun21rereco_7TeV/massfactorizedmvaanalysis.dat zeevalidation.dat fillEscaleTrees=0 useRunDTriggersForZee=0 fillOptTree=1
+analyzer MassFactorizedMvaAnalysis photonanalysis.dat jun21rereco_7TeV/analysis_settings.dat jun21rereco_7TeV/massfactorizedmvaanalysis.dat jun21rereco_7TeV/zeevalidation.dat fillEscaleTrees=0 useRunDTriggersForZee=0 fillOptTree=1

@@ -67,7 +67,7 @@ photonLevel2011IDMVA_EB=
 photonLevel2011IDMVA_EE=
 photonLevel2013_7TeV_IDMVA_EB=aux/2013FinalPaper_PhotonID_Barrel_BDT_TrainRangePT15_7TeV.weights.xml
 photonLevel2013_7TeV_IDMVA_EE=aux/2013FinalPaper_PhotonID_Endcap_BDT_TrainRangePT15_7TeV.weights.xml
-eventLevelMvaMIT=aux/HggBambu_SMDipho_Jan16_BDTG.weights.xml
+eventLevelMvaMIT=aux/HggBambu_SMDipho_Oct29_allsigevenbkg7TeV_BDTG.weights.xml
 
 bkgPolOrderByCat=4,5,5,5,3
 

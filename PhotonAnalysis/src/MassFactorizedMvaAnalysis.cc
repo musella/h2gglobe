@@ -798,15 +798,14 @@ bool MassFactorizedMvaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float wei
             evweight*=BeamspotReweight(vtx->Z(),((TVector3*)l.gv_pos->At(0))->Z());
         }
     
-        // FIXME pass smeared R9
-        mass     = Higgs.M();
+        mass          = Higgs.M();
         float ptHiggs = Higgs.Pt();
 
         // For Zee validation, reweight MC pT distribution to match data 
         if( l.runZeeValidation && cur_type != 0) {
             if (zeePtBinLowEdge.size() != zeePtWeight.size()) {
-            std::cout << "Array size mismatch: zeePtBinLowEdge[" << zeePtBinLowEdge.size()
-                  << "], zeePtWeight[" << zeePtWeight.size() << "]" <<diphoton_id << std::endl;
+		std::cout << "Array size mismatch: zeePtBinLowEdge[" << zeePtBinLowEdge.size()
+			  << "], zeePtWeight[" << zeePtWeight.size() << "]" <<diphoton_id << std::endl;
             }
             for (int i=0; i<zeePtBinLowEdge.size(); i++) {
                 float zeePtBinHighEdge = 999.;
@@ -821,8 +820,8 @@ bool MassFactorizedMvaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float wei
     
 
         // Must be calculated after photon id has potentially been smeared
-        //fillTrainTree(l,diphoton_index.first,diphoton_index.second,l.dipho_vtxind[diphoton_id] ,
-        /// vtxProb,lead_p4,sublead_p4 ,sigmaMrv,sigmaMwv,sigmaMeonly ,bdtTrainingPhilosophy.c_str() ,phoid_mvaout_lead,phoid_mvaout_sublead);
+        // fillTrainTree(l,diphoton_index.first,diphoton_index.second,l.dipho_vtxind[diphoton_id] ,
+        // vtxProb,lead_p4,sublead_p4 ,sigmaMrv,sigmaMwv,sigmaMeonly ,bdtTrainingPhilosophy.c_str() ,phoid_mvaout_lead,phoid_mvaout_sublead);
         float phoid_mvaout_lead = -2;
         float phoid_mvaout_sublead = -2;
         float vtxProb = -1;

@@ -1,0 +1,5 @@
+zeePtBinLowEdge=0.,1000.
+zeePtWeight=1.0
+
+doSystematics=0
+useRunDTriggersForZee=1
