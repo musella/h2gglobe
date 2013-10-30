@@ -441,18 +441,24 @@ void MassFactorizedMvaAnalysis::Init(LoopAll& l)
     } else if( photonLevel2012IDMVA_EB != "" && photonLevel2012IDMVA_EE != "" ) {
     	l.tmvaReaderID_Single_Barrel->BookMVA("AdaBoost",photonLevel2012IDMVA_EB.c_str());
     	l.tmvaReaderID_Single_Endcap->BookMVA("AdaBoost",photonLevel2012IDMVA_EE.c_str());
-	assert( bdtTrainingType == "Moriond2013" );
+	assert( bdtTrainingType == "Moriond2013" ); 
+    } else if (photonLevel2013_7TeV_IDMVA_EB != "" && photonLevel2013_7TeV_IDMVA_EE != "" ) {
+    	l.tmvaReaderID_2013_7TeV_MIT_Barrel->BookMVA("AdaBoost",photonLevel2013_7TeV_IDMVA_EB.c_str());
+    	l.tmvaReaderID_2013_7TeV_MIT_Endcap->BookMVA("AdaBoost",photonLevel2013_7TeV_IDMVA_EE.c_str());
     } else { 
     	assert( run7TeV4Xanalysis );
     }
+
     // MIT 
     if( photonLevel2011IDMVA_EB != "" && photonLevel2011IDMVA_EE != "" ) {
     	l.tmvaReaderID_MIT_Barrel->BookMVA("AdaBoost",photonLevel2011IDMVA_EB.c_str());
     	l.tmvaReaderID_MIT_Endcap->BookMVA("AdaBoost",photonLevel2011IDMVA_EE.c_str());
+	assert(bdtTrainingType == "Old7TeV");
     } else {
     	assert( ! run7TeV4Xanalysis );
     }
 
+    std::cout << eventLevelMvaMIT << std::endl;
     l.tmvaReader_dipho_MIT->BookMVA("Gradient"   ,eventLevelMvaMIT.c_str());
     // ----------------------------------------------------------------------//
     
@@ -580,6 +586,21 @@ bool MassFactorizedMvaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float wei
 {
 
     assert( isSyst || ! skipSelection );
+
+    //Calculate cluster shape variables prior to shape rescaling                                                                                                                    
+    for (int ipho=0;ipho<l.pho_n;ipho++){
+	//// l.pho_s4ratio[ipho]  = l.pho_e2x2[ipho]/l.pho_e5x5[ipho];
+	l.pho_s4ratio[ipho] = l.pho_e2x2[ipho]/l.bc_s25[l.sc_bcseedind[l.pho_scind[ipho]]];
+	float rr2=l.pho_eseffsixix[ipho]*l.pho_eseffsixix[ipho]+l.pho_eseffsiyiy[ipho]*l.pho_eseffsiyiy[ipho];
+	l.pho_ESEffSigmaRR[ipho] = 0.0;
+	if(rr2>0. && rr2<999999.) {
+	    l.pho_ESEffSigmaRR[ipho] = sqrt(rr2);
+	}
+    }
+
+    if( l.version >= 13 && forcedRho < 0. ) {
+        l.rho = l.rho_algo1;
+    }
 
     int cur_type = l.itype[l.current];
     float sampleweight = l.sampleContainer[l.current_sample_index].weight();
@@ -715,8 +736,8 @@ bool MassFactorizedMvaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float wei
                 if(eventweight*sampleweight!=0) myweight=eventweight/sampleweight;
                 
                 VBFevent= ( run7TeV4Xanalysis ? 
-                    VBFTag2011(l, diphotonVBF_id, &smeared_pho_energy[0], true, eventweight, myweight) :
-                    VBFTag2012(vbfIjet1, vbfIjet2, l, diphotonVBF_id, &smeared_pho_energy[0], true, eventweight, myweight) );
+			    VBFTag2011(l, diphotonVBF_id, &smeared_pho_energy[0], true, eventweight, myweight) :
+			    VBFTag2012(vbfIjet1, vbfIjet2, l, diphotonVBF_id, &smeared_pho_energy[0], true, eventweight, myweight) );
             }
         }
 
@@ -783,15 +804,14 @@ bool MassFactorizedMvaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float wei
             evweight*=BeamspotReweight(vtx->Z(),((TVector3*)l.gv_pos->At(0))->Z());
         }
     
-        // FIXME pass smeared R9
-        mass     = Higgs.M();
+        mass          = Higgs.M();
         float ptHiggs = Higgs.Pt();
 
         // For Zee validation, reweight MC pT distribution to match data 
         if( l.runZeeValidation && cur_type != 0) {
             if (zeePtBinLowEdge.size() != zeePtWeight.size()) {
-            std::cout << "Array size mismatch: zeePtBinLowEdge[" << zeePtBinLowEdge.size()
-                  << "], zeePtWeight[" << zeePtWeight.size() << "]" <<diphoton_id << std::endl;
+		std::cout << "Array size mismatch: zeePtBinLowEdge[" << zeePtBinLowEdge.size()
+			  << "], zeePtWeight[" << zeePtWeight.size() << "]" <<diphoton_id << std::endl;
             }
             for (int i=0; i<zeePtBinLowEdge.size(); i++) {
                 float zeePtBinHighEdge = 999.;
@@ -806,8 +826,8 @@ bool MassFactorizedMvaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float wei
     
 
         // Must be calculated after photon id has potentially been smeared
-        //fillTrainTree(l,diphoton_index.first,diphoton_index.second,l.dipho_vtxind[diphoton_id] ,
-        /// vtxProb,lead_p4,sublead_p4 ,sigmaMrv,sigmaMwv,sigmaMeonly ,bdtTrainingPhilosophy.c_str() ,phoid_mvaout_lead,phoid_mvaout_sublead);
+        // fillTrainTree(l,diphoton_index.first,diphoton_index.second,l.dipho_vtxind[diphoton_id] ,
+        // vtxProb,lead_p4,sublead_p4 ,sigmaMrv,sigmaMwv,sigmaMeonly ,bdtTrainingPhilosophy.c_str() ,phoid_mvaout_lead,phoid_mvaout_sublead);
         float phoid_mvaout_lead = -2;
         float phoid_mvaout_sublead = -2;
         float vtxProb = -1;
@@ -1342,7 +1362,7 @@ void MassFactorizedMvaAnalysis::fillZeeControlPlots(const TLorentzVector & lead_
     l.FillHist("mass",0, mass, evweight);
     if (category>-1) l.FillHist("mass",category+1, mass, evweight);
     l.FillHist("mass_basecat",selectioncategory, mass, evweight);
-    if (diphobdt_output>-0.05) {
+    if (passMVA) {
 	l.FillHist("mass_passDiphobdt",0, mass, evweight);
 	l.FillHist("mass_basecat_passDiphobdt",selectioncategory, mass, evweight);
     } else {
@@ -1353,7 +1373,7 @@ void MassFactorizedMvaAnalysis::fillZeeControlPlots(const TLorentzVector & lead_
 	l.FillHist("mass_basecat_passCiC",selectioncategory, mass, evweight);
     }
 
-    if (ptHiggs<20.) {
+    if (ptHiggs < 20.) {
 	l.FillHist("mass_pt0to20",0, mass, evweight);
 	if (passCiC) l.FillHist("mass_passCiC_pt0to20",0, mass, evweight);
     } else if (ptHiggs<40.) {
@@ -1413,11 +1433,12 @@ void MassFactorizedMvaAnalysis::fillZeeControlPlots(const TLorentzVector & lead_
 	l.FillHist("bdtout",selectioncategory+1,diphobdt_output,evweight);
 	l.FillHist("bdtout_up",selectioncategory+1,diphobdt_output_up,evweight);
 	l.FillHist("bdtout_down",selectioncategory+1,diphobdt_output_down,evweight);
-	if (fabs(lead_p4.Eta() < 1.4442 ) && fabs(sublead_p4.Eta()<1.4442)){
-	    l.FillHist("bdtoutEB",0,diphobdt_output,evweight);
-	    l.FillHist("bdtoutEB_up",0,diphobdt_output_up,evweight);
+
+	if (fabs(lead_p4.Eta()) < 1.4442 && fabs(sublead_p4.Eta())<1.4442) {
+	    l.FillHist("bdtoutEB", 0, diphobdt_output, evweight);
+	    l.FillHist("bdtoutEB_up", 0, diphobdt_output_up, evweight);
 	    l.FillHist("bdtoutEB_down",0,diphobdt_output_down,evweight);
-	} else if (fabs(lead_p4.Eta() > 1.566 ) && fabs(sublead_p4.Eta()>1.566)){
+	} else if (fabs(lead_p4.Eta()) > 1.566 && fabs(sublead_p4.Eta())>1.566) {
 	    l.FillHist("bdtoutEE",0,diphobdt_output,evweight);
 	    l.FillHist("bdtoutEE_up",0,diphobdt_output_up,evweight);
 	    l.FillHist("bdtoutEE_down",0,diphobdt_output_down,evweight);
@@ -1757,7 +1778,7 @@ void MassFactorizedMvaAnalysis::fillZeeControlPlots(const TLorentzVector & lead_
 	    float sieip        = l.pho_sieip[iPhoton];
 	    float etawidth     = l.pho_etawidth[iPhoton];
 	    float phiwidth     = l.sc_sphi[l.pho_scind[iPhoton]];
-	    float s4ratio  = l.pho_s4ratio[iPhoton];
+	    float s4ratio      = l.pho_s4ratio[iPhoton];
 	    float ESEffSigmaRR = l.pho_ESEffSigmaRR[iPhoton];
 
 	    //CiC inputs
