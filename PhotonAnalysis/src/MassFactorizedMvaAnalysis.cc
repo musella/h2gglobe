@@ -458,6 +458,7 @@ void MassFactorizedMvaAnalysis::Init(LoopAll& l)
     	assert( ! run7TeV4Xanalysis );
     }
 
+    std::cout << eventLevelMvaMIT << std::endl;
     l.tmvaReader_dipho_MIT->BookMVA("Gradient"   ,eventLevelMvaMIT.c_str());
     // ----------------------------------------------------------------------//
     
