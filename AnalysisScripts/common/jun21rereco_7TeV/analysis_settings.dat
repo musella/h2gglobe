@@ -71,7 +71,11 @@ recorrectJets=0
 rerunJetMva=0
 recomputeJetWp=0
 
-reRunVtx=0
+# do not apply PU jet ID for 7TeV
+usePUjetveto=0
+
+## re-run vertex at analysis level
+reRunVtx=1
 rematchConversions=0
 
 # vertex
