@@ -146,11 +146,10 @@ void StatAnalysis::Init(LoopAll& l)
     if( nR9Categories != 0 ) nInclusiveCategories_ *= nR9Categories;
     if( nPtCategories != 0 ) nInclusiveCategories_ *= nPtCategories;
 
-    // mva removed cp march 8
-    //if( useMVA ) nInclusiveCategories_ = nDiphoEventClasses;
-
-    // CP
-
+    // scale R9 for CiC only?
+    if( scaleR9ForCicOnly ) {
+	l.pho_r9_cic = &corrected_pho_r9[0];
+    }
     nPhotonCategories_ = nEtaCategories;
     if( nR9Categories != 0 ) nPhotonCategories_ *= nR9Categories;
 
@@ -1910,7 +1909,7 @@ void StatAnalysis::rescaleClusterVariables(LoopAll &l){
 
             if( scaleR9Only ) {
                 double R9_rescale = (l.pho_isEB[ipho]) ? 1.0048 : 1.00492 ;
-                l.pho_r9[ipho]*=R9_rescale;
+		l.pho_r9[ipho]*=R9_rescale;	   
             } else {
                 l.pho_r9[ipho]*=1.0035;
                 if (l.pho_isEB[ipho]){ l.pho_sieie[ipho] = (0.87*l.pho_sieie[ipho]) + 0.0011 ;}
@@ -1921,13 +1920,20 @@ void StatAnalysis::rescaleClusterVariables(LoopAll &l){
             }
 
         } else {
-            //2012 rescaling from here https://hypernews.cern.ch/HyperNews/CMS/get/higgs2g/752/1/1/2/1/3.html
-
-            if (l.pho_isEB[ipho]) {
-                l.pho_r9[ipho] = 1.0045*l.pho_r9[ipho] + 0.0010;
-            } else {
-                l.pho_r9[ipho] = 1.0086*l.pho_r9[ipho] - 0.0007;
-            }
+	    if( scaleR9ForCicOnly ) { 
+		if (pho_isEB[ipho]) {
+		    pho_r9_cic[ipho] = 1.00793*pho_r9[ipho] + 0.00532538;
+		} else {
+		    pho_r9_cic[ipho] = 1.00017*pho_r9[ipho] + 0.0016474;
+		}
+	    } else { 
+		//2012 rescaling from here https://hypernews.cern.ch/HyperNews/CMS/get/higgs2g/752/1/1/2/1/3.html
+		if (l.pho_isEB[ipho]) {
+		    l.pho_r9[ipho] = 1.0045*l.pho_r9[ipho] + 0.0010;
+		} else {
+		    l.pho_r9[ipho] = 1.0086*l.pho_r9[ipho] - 0.0007;
+		}
+	    }
             if( !scaleR9Only ) {
                 if (l.pho_isEB[ipho]) {
                     l.pho_s4ratio[ipho] = 1.01894*l.pho_s4ratio[ipho] - 0.01034;

@@ -18,6 +18,8 @@
 #include <fstream>
 #include "math.h"
 
+#include "branchdef/Limits.h"
+
 // ------------------------------------------------------------------------------------
 class StatAnalysis : public PhotonAnalysis 
 {
@@ -133,6 +135,9 @@ class StatAnalysis : public PhotonAnalysis
     std::vector<float> smeared_pho_energy;
     std::vector<float> smeared_pho_r9;
     std::vector<float> smeared_pho_weight;
+    
+    bool scaleR9ForCicOnly;
+    Float_t corrected_pho_r9[MAX_PHOTONS];
 
     void  computeExclusiveCategory(LoopAll & l, int & category, std::pair<int,int> diphoton_index, float pt, float diphoBDT=1., bool mvaselection=false);
     void computeSpinCategory(LoopAll &l, int &category, TLorentzVector lead_p4, TLorentzVector sublead_p4);
