@@ -907,7 +907,13 @@ void PhotonAnalysis::Init(LoopAll& l)
               if (!combinedmvaVbfSelection) {
                 tmvaVbfReader_->AddVariable("dijet_dPhi",       &myVBFdPhi);
               } else {
-                tmvaVbfReader_->AddVariable("min(dijet_dPhi,2.916)", &myVBFdPhiTrunc);
+                if(l.sqrtS==7){
+                  tmvaVbfReader_->AddVariable("min(dijet_dPhi,2.9416)", &myVBFdPhiTrunc);
+                } else if(l.sqrtS==8){
+                  tmvaVbfReader_->AddVariable("min(dijet_dPhi,2.916)", &myVBFdPhiTrunc);
+                } else {
+                  std::cout<<"sqrtS is not 7 or 8 but is "<<l.sqrtS<<std::endl;
+                }
               }
               tmvaVbfReader_->AddVariable("dijet_Mjj",        &myVBF_Mjj);	   
               tmvaVbfReader_->AddVariable("dipho_pt/mass",    &myVBFDiPhoPtOverM);
@@ -917,7 +923,13 @@ void PhotonAnalysis::Init(LoopAll& l)
               //tmvaVbfDiphoReader_->AddVariable("bdt_dijet_sherpa_plusdiphoptom", &myVBF_MVA);
               //tmvaVbfDiphoReader_->AddVariable("dipho_pt/mass",                  &myVBFDiPhoPtOverM);
               tmvaVbfDiphoReader_->AddVariable("dipho_mva",                       &myVBFDIPHObdt);
-              tmvaVbfDiphoReader_->AddVariable("bdt_dijet_maxdPhi",               &myVBF_MVA);
+              if(l.sqrtS==7){
+                tmvaVbfDiphoReader_->AddVariable("bdt_dijet_7TeV_ptrewght",         &myVBF_MVA);
+              } else if(l.sqrtS==8){
+                tmvaVbfDiphoReader_->AddVariable("bdt_dijet_maxdPhi",               &myVBF_MVA);
+              } else {
+                std::cout<<"sqrtS is not 7 or 8 but is "<<l.sqrtS<<std::endl;
+              }
               tmvaVbfDiphoReader_->AddVariable("dipho_pt/mass",                  &myVBFDiPhoPtOverM);
               tmvaVbfDiphoReader_->BookMVA(mvaVbfDiphoMethod, mvaVbfDiphoWeights);
             } else {
@@ -4077,7 +4089,11 @@ bool PhotonAnalysis::FillDijetVariables(int & ijet1, int & ijet2, LoopAll& l, in
     myVBFZep    = fabs(diphoton.Eta() - 0.5*(jet1->Eta() + jet2->Eta()));
     myVBFdPhi   = fabs(diphoton.DeltaPhi(dijet));
     //    myVBFdPhiTrunc   = TMath::Min( (double)myVBFdPhi, TMath::Pi() - 0.2 );
-    myVBFdPhiTrunc   = TMath::Min( (double)myVBFdPhi, 2.916);
+    if(l.sqrtS==7){
+      myVBFdPhiTrunc   = TMath::Min( (double)myVBFdPhi, 2.9416);
+    } else if(l.sqrtS==8){
+      myVBFdPhiTrunc   = TMath::Min( (double)myVBFdPhi, 2.916);
+    }
     myVBF_Mgg   = diphoton.M();
     myVBFDiPhoPtOverM   = diphoton.Pt()   / myVBF_Mgg;
     myVBFLeadPhoPtOverM = lead_p4.Pt()    / myVBF_Mgg;
