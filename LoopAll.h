@@ -335,6 +335,7 @@ class LoopAll {
   TMVA::Reader *tmvaReader_dipho_MIT;
   TMVA::Reader *tmvaReaderID_Single_Barrel, *tmvaReaderID_Single_Endcap;
   TMVA::Reader *tmvaReaderID_2013_Barrel, *tmvaReaderID_2013_Endcap;
+  TMVA::Reader *tmvaReaderID_2013_7TeV_MIT_Barrel, *tmvaReaderID_2013_7TeV_MIT_Endcap;
 
   Float_t photonIDMVA(Int_t, Int_t, TLorentzVector &, const char*);
 
@@ -1292,6 +1293,7 @@ void VHTwoElectronsEvents(bool & VHlep1event, bool & VHlep2event, int & diphoton
 private:
   Float_t photonIDMVA2012(Int_t, Int_t, TLorentzVector &, const char*);
   Float_t photonIDMVA2013(Int_t, Int_t, TLorentzVector &, const char*);
+  Float_t photonIDMVA2013_7TeV(Int_t, Int_t, TLorentzVector &, const char*);
   Float_t photonIDMVA2011(Int_t, Int_t, TLorentzVector &, const char*);
 
   Normalization_8TeV *signalNormalizer;
