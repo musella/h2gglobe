@@ -16,6 +16,7 @@ doKFactorSyst=1
 kfacHist=aux/KFactors_AllScales_interpolated.root
 puHist=auto
 puTarget=aux/nov08_rereco.json.68000.pileup.root
+puTargets=
 
 ## energy scale adjustement and errors
 scale_offset_file=jun21rereco_7TeV/energy_scale_offsets.dat
@@ -49,3 +50,4 @@ efficiencyFile=aux/sig_reweighing_legacy_run2011_cutbased_v3.root
 
 # bkg pol orders 
 bkgPolOrderByCat=5,5,5,5,4,4,3,3,3,2,3
+
