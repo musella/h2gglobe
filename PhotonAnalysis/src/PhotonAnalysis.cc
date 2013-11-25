@@ -559,6 +559,8 @@ void PhotonAnalysis::applySinglePhotonSmearings(std::vector<float> & smeared_pho
             }
             eScaleDataSmearer->smearPhoton(phoInfo,sweight,l.run,0.);
             pweight *= sweight;
+            eScaleEtDataSmearer->smearPhoton(phoInfo,sweight,l.run,0.);
+            pweight *= sweight;
         }
         
         //// if( ipho == 0 ) { phoInfo.dump(); }
@@ -1226,6 +1228,21 @@ void PhotonAnalysis::Init(LoopAll& l)
     eScaleDataSmearer->doEnergy(true);
     eScaleDataSmearer->scaleOrSmear(true);
 
+    // energy scale corrections to Data Et Dependent on top of previous ones
+    eSmearEtDataPars.categoryType = "2CatR9_EBEBm4EE";    
+    eSmearEtDataPars.byRun = true;
+    eSmearEtDataPars.n_categories = 6; //GF
+    std::cerr << "Reading energy scale offsets " << scale_et_offset_file << std::endl;
+    readEnergyScaleOffsets(scale_et_offset_file, eSmearEtDataPars.scale_offset_byrun, eSmearEtDataPars.photon_categories);
+    if( ! eSmearEtDataPars.photon_categories.empty() ) {
+        eSmearEtDataPars.categoryType = "Automagic";
+        eSmearEtDataPars.n_categories = -1;
+    }
+
+    eScaleEtDataSmearer = new EnergySmearer( eSmearEtDataPars );
+    eScaleEtDataSmearer->name("E_scale_data");
+    eScaleEtDataSmearer->doEnergy(true);
+    eScaleEtDataSmearer->scaleOrSmear(true);
     // Read energy scale errors and energy smaerings from dat files
     assert( ! scale_offset_error_file.empty() && ! smearing_file.empty() );
     
@@ -1278,6 +1295,27 @@ void PhotonAnalysis::Init(LoopAll& l)
         massResoPars.smearing_sigma = tmp_smearing[0].scale_offset;
         massResoPars.smearing_stocastic_sigma = tmp_smearing[0].scale_stocastic_offset;
         massResoPars.smearing_sigma_error = tmp_smearing[0].scale_offset_error;
+    }
+
+    eSmearEtDataPars = eSmearPars;
+    if( ! mass_resol_file.empty() ) {
+        EnergySmearer::energySmearingParameters::eScaleVector tmp_smearing;
+        EnergySmearer::energySmearingParameters::phoCatVector tmp_smearing_cat;
+        readEnergyScaleOffsets(mass_resol_file, tmp_smearing, tmp_smearing_cat,false);
+
+        // make sure that the scale correction and smearing info is as expected
+        assert( tmp_smearing.size() == 1 );
+        assert( ! tmp_smearing_cat.empty() );
+
+        // copy the read info to the smarer parameters
+        eSmearEtDataPars.categoryType = "Automagic";
+        eSmearEtDataPars.byRun = false;
+        eSmearEtDataPars.n_categories = tmp_smearing_cat.size();
+        eSmearEtDataPars.photon_categories = tmp_smearing_cat;
+
+        eSmearEtDataPars.smearing_sigma = tmp_smearing[0].scale_offset;
+        eSmearEtDataPars.smearing_stocastic_sigma = tmp_smearing[0].scale_stocastic_offset;
+        eSmearEtDataPars.smearing_sigma_error = tmp_smearing[0].scale_offset_error;
     }
 
     // energy scale systematics to MC
@@ -1982,6 +2020,8 @@ void PhotonAnalysis::PreselectPhotons(LoopAll& l, int jentry)
         if( cur_type == 0 ) {          // correct energy scale in data
             float ebefore = phoInfo.energy();
             eScaleDataSmearer->smearPhoton(phoInfo,sweight,l.run,0.);
+            pweight *= sweight;
+            eScaleEtDataSmearer->smearPhoton(phoInfo,sweight,l.run,0.);
             pweight *= sweight;
         }
         // apply mc-derived photon corrections, to data and MC alike
