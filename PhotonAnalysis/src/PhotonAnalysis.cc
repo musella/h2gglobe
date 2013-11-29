@@ -232,6 +232,7 @@ void readEnergyScaleOffsets(const std::string &fname, EnergySmearer::energySmear
                 err=0., pivot=0;
         }
         if( nread == 0 ) { 
+            printf("Unable to read line %s\n",line);
             continue; 
         }
 	
@@ -1234,6 +1235,7 @@ void PhotonAnalysis::Init(LoopAll& l)
     eSmearEtDataPars.n_categories = 6; //GF
     std::cerr << "Reading energy scale offsets " << scale_et_offset_file << std::endl;
     readEnergyScaleOffsets(scale_et_offset_file, eSmearEtDataPars.scale_offset_byrun, eSmearEtDataPars.photon_categories);
+    std::cerr << " End Reading "<<std::endl;
     if( ! eSmearEtDataPars.photon_categories.empty() ) {
         eSmearEtDataPars.categoryType = "Automagic";
         eSmearEtDataPars.n_categories = -1;

@@ -71,6 +71,9 @@ for line in input.read().split("\n"):
         
         r9Lab, r9Rng = r9map[r9]
         typ = 0
+	pivot = 0 
+	stoc = 0 
+	stocerr = 0
         etaLab = etamap[ "%s_%s" % ( etaRng[0], etaRng[1] ) ]
         cat = "%s%s%s" % ( det, etaLab, r9Lab )
         if cat != lastcat:
@@ -78,7 +81,8 @@ for line in input.read().split("\n"):
 	if not infoline:
 		print >>out, "#cat typ et0 et1 eta0 eta1 r9 r9 first last pivot offset err stoc err"
 		infoline=True
-        print >>out,"%s %d %d %d %s %s %1.2f %1.2f %d %d %1.3g %1.3g" % (cat,  typ, et0, et1 ,etaRng[0], etaRng[1], r9Rng[0], r9Rng[1], first, last,  corr, err )
+        print >>out,"%s %d %d %d %s %s %1.2f %1.2f %d %d %1.3g %1.3g" % (cat,  typ, et0, et1 ,etaRng[0], etaRng[1], r9Rng[0], r9Rng[1], first, last, pivot, corr, err, stoc ,stocerr )
+        print >>out,"%s %d %d %d %s %s %1.2f %1.2f %d %d %1.3g %1.3g" % (cat,  typ, et0, et1 ,-etaRng[0], -etaRng[1], r9Rng[0], r9Rng[1], first, last,  pivot, corr, err, stoc, stocerr )
 	
     else:
 	if len(toks)>0:
