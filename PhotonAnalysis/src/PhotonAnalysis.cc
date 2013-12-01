@@ -572,7 +572,7 @@ void PhotonAnalysis::applySinglePhotonSmearings(std::vector<float> & smeared_pho
             }
             eScaleDataSmearer->smearPhoton(phoInfo,sweight,l.run,0.);
             pweight *= sweight;
-            eScaleEtDataSmearer->smearPhoton(phoInfo,sweight,l.run,0.);
+            eScaleEtDataSmearer->smearPhoton(phoInfo,sweight,l.run,1.);
             pweight *= sweight;
         }
         
@@ -2035,7 +2035,7 @@ void PhotonAnalysis::PreselectPhotons(LoopAll& l, int jentry)
             float ebefore = phoInfo.energy();
             eScaleDataSmearer->smearPhoton(phoInfo,sweight,l.run,0.);
             pweight *= sweight;
-            eScaleEtDataSmearer->smearPhoton(phoInfo,sweight,l.run,0.);
+            eScaleEtDataSmearer->smearPhoton(phoInfo,sweight,l.run,1.);
             pweight *= sweight;
         }
         // apply mc-derived photon corrections, to data and MC alike
