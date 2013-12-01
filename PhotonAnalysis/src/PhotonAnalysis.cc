@@ -255,6 +255,18 @@ void readEnergyScaleOffsets(const std::string &fname, EnergySmearer::energySmear
             photonCategories.push_back(PhotonCategory(minet,maxet,mineta,maxeta,minr9,maxr9,(PhotonCategory::photon_type_t)type,catname));
             std::cout << "  defining new category " << photonCategories.back() << std::endl;
         }
+        //TO DELETE -->END_DEL
+        else {
+            std::cout<< " Category already exists:"<<catname<<endl;
+            std::cout<< Form(" Et: [%.0f,%.0f] eta: [%.0f,%.0f] r9: [%.0f,%.0f] ",
+                    find(photonCategories.begin(), photonCategories.end(), std::string(catname) )->minet,
+                    find(photonCategories.begin(), photonCategories.end(), std::string(catname) )->maxet,
+                    find(photonCategories.begin(), photonCategories.end(), std::string(catname) )->mineta,
+                    find(photonCategories.begin(), photonCategories.end(), std::string(catname) )->maxeta,
+                    find(photonCategories.begin(), photonCategories.end(), std::string(catname) )->minr9,
+                    find(photonCategories.begin(), photonCategories.end(), std::string(catname) )->maxr9
+                )<<endl;
+        } //END_DEL
         // assign the scale offset and error for this category and this run range
         escaleOffset->scale_offset[catname] = data ? -offset : offset;
         escaleOffset->scale_stocastic_offset[catname] = data ? -stocastic : stocastic;
@@ -1242,7 +1254,7 @@ void PhotonAnalysis::Init(LoopAll& l)
     }
 
     eScaleEtDataSmearer = new EnergySmearer( eSmearEtDataPars );
-    eScaleEtDataSmearer->name("E_scale_data");
+    eScaleEtDataSmearer->name("E_scale_data_et");
     eScaleEtDataSmearer->doEnergy(true);
     eScaleEtDataSmearer->scaleOrSmear(true);
     // Read energy scale errors and energy smaerings from dat files

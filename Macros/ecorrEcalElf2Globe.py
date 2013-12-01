@@ -75,16 +75,17 @@ for line in input.read().split("\n"):
 	stoc = 0 
 	stocerr = 0
         etaLab = etamap[ "%s_%s" % ( etaRng[0], etaRng[1] ) ]
-        cat = "%s%s%s" % ( det, etaLab, r9Lab )
+        #cat = "%s%s%s" % ( det, etaLab, r9Lab )
+        cat = "%s%s%s%s" % ( det, etaLab, r9Lab, "Et"+str(et0) )
         if cat != lastcat:
             print >>out
 	if not infoline:
 		print >>out, "#cat typ et0 et1 eta0 eta1 r9 r9 first last pivot offset err stoc err"
 		infoline=True
 	if first == 0 and last ==0 :
-		last=999999
+		last=99999
         print >>out,"%s %d %d %d %s %s %1.2f %1.2f %d %d %d %1.3g %1.3g %1.3g %1.3g" % (cat,  typ, et0, et1 ,etaRng[0], etaRng[1], r9Rng[0], r9Rng[1], first, last, pivot, corr, err, stoc ,stocerr )
-        print >>out,"%s %d %d %d -%s -%s %1.2f %1.2f %d %d %d %1.3g %1.3g %1.3g %1.3g" % (cat,  typ, et0, et1 ,etaRng[1], etaRng[0], r9Rng[0], r9Rng[1], first, last,  pivot, corr, err, stoc, stocerr )
+        #print >>out,"%s %d %d %d -%s -%s %1.2f %1.2f %d %d %d %1.3g %1.3g %1.3g %1.3g" % (cat,  typ, et0, et1 ,etaRng[1], etaRng[0], r9Rng[0], r9Rng[1], first, last,  pivot, corr, err, stoc, stocerr )
 	
     else:
 	if len(toks)>0:
