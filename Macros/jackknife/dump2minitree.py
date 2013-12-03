@@ -36,15 +36,18 @@ def dumpTree(file,lst,isMVA,filter=None):
         nt.run, nt.lumis, nt.event = idx
         if isMVA:
             nt.diphotonMVA = vars["diphoBDT"]
+        if "evcat" in vars:
             nt.category = vars["evcat"]
-            nt.CMS_hgg_mass = vars["mgg"]
         else:
             nt.category = vars["cat"]
+        if "mgg" in vars:
+            nt.CMS_hgg_mass = vars["mgg"]
+        else:
             nt.CMS_hgg_mass = vars["mass"]
         tree.Fill()
     tree.Write()
 
-def getlist(input,minrun=0,maxrun=999999999,ebonly=False):
+def getlist(input,minrun=0,maxrun=999999999,ebonly=False,maxmass=180.,minmass=100.):
     lst = {}
 
     global isMVA
@@ -83,7 +86,11 @@ def getlist(input,minrun=0,maxrun=999999999,ebonly=False):
         try:
             if run<=minrun or run>maxrun:
                 continue
-            
+            ## if "mgg" in vars and ( vars["mgg"]<=maxmass or vars["mgg"]>maxmass):
+            ##     continue
+            ## if "mass" in vars and ( vars["mass"]<=maxmass or vars["mass"]>maxmass):
+            ##     continue
+
             if "diphoBDT" in vars and vars["diphoBDT"] < -0.05:
                   continue
 
@@ -182,16 +189,22 @@ def main(options,args):
 
     if options.doMigrationMatrix:
         migration = ROOT.TH2F("migration","migration",10,-1,9,10,-1,9)
+        migration_mass = ROOT.TH3F("migration_mass","migration_mass",80,100,180,10,-1,9,10,-1,9)
         for event in common:
             try:
                 cat1 =  list1[event]["evcat"]
                 cat2 =  list2[event]["evcat"]
+                try:
+                    mass =  list1[event]["mgg"]
+                except:
+                    mass =  list1[event]["mass"]
                 weight = 1.
                 try:
                     weight = list1[event]["weight"]
                 except:
                     pass
                 migration.Fill(cat1,cat2,weight)
+                migration_mass.Fill(mass,cat1,cat2,weight)
             except Exception, e:
                 print e, list1[event], list2[event]
             
@@ -201,10 +214,15 @@ def main(options,args):
                 cat2 =  -1
                 weight = 1.
                 try:
+                    mass =  list1[event]["mgg"]
+                except:
+                    mass =  list1[event]["mass"]
+                try:
                     weight = list1[event]["weight"]
                 except:
                     pass
                 migration.Fill(cat1,cat2,weight)
+                migration_mass.Fill(mass,cat1,cat2,weight)
             except Exception, e:
                 print e, list1[event]
 
@@ -215,13 +233,20 @@ def main(options,args):
                 cat2 =  list2[event]["evcat"]
                 weight = 1.
                 try:
+                    mass =  list2[event]["mgg"]
+                except:
+                    mass =  list2[event]["mass"]
+                try:
                     weight = list2[event]["weight"]
                 except:
                     pass
                 migration.Fill(cat1,cat2,weight)
+                migration_mass.Fill(mass,cat1,cat2,weight)
             except Exception, e:
                 print e, list2[event]
 
+        if options.migrationLabel != "":
+            fmig = ROOT.TFile.Open("%s/migration_%s.root" % (options.jsondir,options.migrationLabel), "recreate" )
         if options.ebOnly:
             fmig = ROOT.TFile.Open("%s/migration_ebonly.root" % (options.jsondir), "recreate" )
         else:
@@ -308,6 +333,11 @@ if __name__ == "__main__":
                     default="",
                     help="default : %default", metavar=""
                     ),
+        make_option("--migrationLabel",
+                    action="store", type="string", dest="migrationLabel",
+                    default="",
+                    help="default : %default", metavar=""
+                    ),        
         make_option("--randomSeed",
                     action="store", type="int", dest="randomSeed",
                     default=None,
