@@ -43,12 +43,17 @@ if __name__ == "__main__":
     #
     # open input files
     #
-    tunes = [ "TuneZ2Star", "TuneProQ20", "TuneProPT0",  "TuneP0", "TuneD6T" ]
+    tunes = [ "nominal", ## "TuneProQ20",
+              "jerUp",  "jerDown", "jerCentral" ]
+    ### tunes = [ "TuneZ2Star", ## "TuneProQ20",
+    ###           "TuneProPT0",  "TuneP0", "TuneD6T" ]
     ## nameTemplate = "/tmp/musella/histograms_CMS-HGG_mva_%s.root"
-    nameTemplate = "/afs/cern.ch/user/m/musella/Analysis/CMGTools/CMSSW_5_2_3_patch2/src/h2gglobe_HEAD/Reduction/AnalysisScripts/yr3_systematics_v1/cutbtag_%s/histograms_CMS-HGG.root"
+    ## nameTemplate = "/afs/cern.ch/user/m/musella/Analysis/CMGTools/CMSSW_5_2_3_patch2/src/h2gglobe_HEAD/Reduction/AnalysisScripts/yr3_systematics_v1/cutbtag_%s/histograms_CMS-HGG.root"
     ## nameTemplate = "/afs/cern.ch/user/m/musella/Analysis/CMGTools/CMSSW_5_2_3_patch2/src/h2gglobe_HEAD/Reduction/AnalysisScripts/yr3_systematics_v1/mavtag_%s/histograms_CMS-HGG.root"
-    doUEOFF = True
-    ### doUEOFF = False
+    # nameTemplate = "/afs/cern.ch/user/m/musella/Analysis/CMGTools/H2G_6_1_2/src/h2gglobe_vbf/AnalysisScripts/legacy_systematics_v1/mavtag_%s/histograms_CMS-HGG.root"
+    nameTemplate = "/afs/cern.ch/user/m/musella/Analysis/CMGTools/H2G_6_1_2/src/h2gglobe_vbf/AnalysisScripts/legacy_systematics_v1/mvatag_%s/histograms_CMS-HGG.root"
+    # doUEOFF = True
+    doUEOFF = False
     ## doRatio = True
     doRatio = False
     
@@ -217,7 +222,8 @@ if __name__ == "__main__":
                 drawStack( gghStk, "Draw", "same hist e1 nostack")
             else:
                 drawStack( gghStk, "Draw", "same hist nostack")
-            gghLegend.Draw("same")
+            if doUEOFF:
+                gghLegend.Draw("same")
             ## stackTitles( gghStk )
             gghFrame.GetYaxis().SetRangeUser(0.8*gghStk.GetMinimum("nostack"),1.4*gghStk.GetMaximum("nostack"))
             ggHcanv.RedrawAxis()
@@ -232,7 +238,8 @@ if __name__ == "__main__":
                 drawStack( qqhStk, "Draw", "same hist e1 nostack")
             else:
                 drawStack( qqhStk, "Draw", "same hist nostack")
-            qqhLegend.Draw("same")
+            if doUEOFF:
+                qqhLegend.Draw("same")
             stackTitles( qqhStk )
             qqhFrame.GetYaxis().SetRangeUser(0.8*gghStk.GetMinimum("nostack"),1.4*qqhStk.GetMaximum("nostack"))
             qqHcanv.RedrawAxis()

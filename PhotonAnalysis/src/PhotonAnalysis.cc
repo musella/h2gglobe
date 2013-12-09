@@ -5801,7 +5801,7 @@ void PhotonAnalysis::saveVBFTree(LoopAll &l, int category, float evweight, float
   for(int ijet=0; ijet<l.genjet_algo1_n; ++ijet) {
       TLorentzVector * p4 = (TLorentzVector*)l.genjet_algo1_p4->At(ijet);
       if( p4->DeltaR( *genpho1 ) > 0.5 && p4->DeltaR( *genpho2 ) > 0.5  ) {
-	  sorted_jets.push_back(ijet);
+          sorted_jets.push_back(ijet);
       }
   }
   std::sort(sorted_jets.begin(),sorted_jets.end(),

@@ -148,9 +148,9 @@ bs_xyz
 ## 
 ## Trigger
 ## 
-hlt_bit
-hlt_n
-hlt_path_names_HLT
+## hlt_bit
+## hlt_n
+## hlt_path_names_HLT
 
 ## 
 ## Vertex selection
@@ -194,3 +194,5 @@ dipho_vtxind
 # MET
 #shiftscaleMET_pt
 
+genjet_algo1_n:1
+genjet_algo1_p4:1

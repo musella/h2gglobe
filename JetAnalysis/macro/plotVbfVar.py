@@ -2,6 +2,8 @@
 
 import sys
 import os
+
+sys.argv.append("-b")
 import ROOT
 
 from math import fabs
@@ -413,17 +415,20 @@ def makeEnvelope(name,histos,stPlus=None,stMinus=None):
         for p,e in points:
             hist2.Fill(p)
             
-        func = ROOT.TF1("func","[0]*exp( -0.5*pow( (x-[1])/( (x>=0)*[2] + (x<=0)*[3] ) ,2.) )",hist2.GetMean()-5.*hist2.GetRMS(),hist2.GetMean()+5.*hist2.GetRMS())
-        func.SetParameters(len(histos),hist2.GetMean(),hist2.GetRMS(), hist2.GetRMS())
-        ## func.SetParLimits(2,-0.5*hist.GetMean(),0.5*hist.GetMean())
-        ## func.SetParLimits(3,-0.1*hist.GetMean(),0.1*hist.GetMean())
-        stat = int( hist2.Fit( func, "L" ) )
-        if stat == 0:
-            errPlus.SetBinContent(ibin+1, max(nom,func.GetParameter(1)+fabs(func.GetParameter(2))))
-            errMinus.SetBinContent(ibin+1,min(nom,func.GetParameter(1)-fabs(func.GetParameter(3))))
-        else:
-            errPlus.SetBinContent(ibin+1,plus)
-            errMinus.SetBinContent(ibin+1,minus)
+        ### func = ROOT.TF1("func","[0]*exp( -0.5*pow( (x-[1])/( (x>=0)*[2] + (x<=0)*[3] ) ,2.) )",hist2.GetMean()-5.*hist2.GetRMS(),hist2.GetMean()+5.*hist2.GetRMS())
+        ### func.SetParameters(len(histos),hist2.GetMean(),hist2.GetRMS(), hist2.GetRMS())
+        ### ## func.SetParLimits(2,-0.5*hist.GetMean(),0.5*hist.GetMean())
+        ### ## func.SetParLimits(3,-0.1*hist.GetMean(),0.1*hist.GetMean())
+        ### stat = int( hist2.Fit( func, "L" ) )
+        ### if stat == 0:
+        ###     errPlus.SetBinContent(ibin+1, max(nom,func.GetParameter(1)+fabs(func.GetParameter(2))))
+        ###     errMinus.SetBinContent(ibin+1,min(nom,func.GetParameter(1)-fabs(func.GetParameter(3))))
+        ### else:
+        ###     errPlus.SetBinContent(ibin+1,plus)
+        ###     errMinus.SetBinContent(ibin+1,minus)
+        
+        errPlus.SetBinContent(ibin+1,hist2.GetMean()+hist2.GetRMS())
+        errMinus.SetBinContent(ibin+1,hist2.GetMean()-hist2.GetRMS())
         
     return makeStack(name,[errPlus,errMinus,nominal])
 

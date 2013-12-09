@@ -49,6 +49,7 @@ type=2 name=MJJ
 type=2 name=deltaEtaJJ
 type=2 name=Zep
 type=2 name=deltaPhiJJGamGam
+type=2 name=deltaPhiJJGamGamGen
 type=2 name=MGamGam
 type=2 name=diphoPtOverM
 type=2 name=leadPtOverM

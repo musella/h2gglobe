@@ -2111,9 +2111,9 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
 	    njets20 += 1.;
     }
 
-    l.FillTree("njets10", njets10);
-    l.FillTree("njets15", njets15);
-    l.FillTree("njets20", njets20);
+    //// l.FillTree("njets10", njets10);
+    //// l.FillTree("njets15", njets15);
+    //// l.FillTree("njets20", njets20);
 
 
     if (vbfIjet1 != -1 && vbfIjet2 !=-1) {
@@ -2348,6 +2348,32 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
     l.FillTree("issyst", (int)isSyst);
     l.FillTree("name1", name1);
 
+    // gen variables:
+    //gen photons,  higgs
+    TLorentzVector *genpho1 = (TLorentzVector*)l.gh_pho1_p4->At(0);
+    TLorentzVector *genpho2 = (TLorentzVector*)l.gh_pho2_p4->At(0);
+    TLorentzVector higgs = *((TLorentzVector*)l.gh_higgs_p4->At(0));
+    // gen jets
+    std::vector<int> sorted_jets;
+    for(int ijet=0; ijet<l.genjet_algo1_n; ++ijet) {
+	TLorentzVector * p4 = (TLorentzVector*)l.genjet_algo1_p4->At(ijet);
+	if( p4->DeltaR( *genpho1 ) > 0.5 && p4->DeltaR( *genpho2 ) > 0.5  ) {
+	    sorted_jets.push_back(ijet);
+	}
+    }
+    std::sort(sorted_jets.begin(),sorted_jets.end(),
+	      ClonesSorter<TLorentzVector,double,std::greater<double> >(l.genjet_algo1_p4,&TLorentzVector::Pt));
+    TLorentzVector* j1 ;
+    TLorentzVector* j2 ;
+    float myVBFdPhi_gen = -99;
+    if ( sorted_jets.size() > 1){
+	j1 = (TLorentzVector*)l.genjet_algo1_p4->At(sorted_jets[0]);
+	j2 = (TLorentzVector*)l.genjet_algo1_p4->At(sorted_jets[1]);
+	TLorentzVector dijet = (*j1) + (*j2);
+	myVBFdPhi_gen =  fabs(higgs.DeltaPhi(dijet));
+    }
+    l.FillTree("dijet_dPhiGen",myVBFdPhi_gen);
+    
     if(diphobdt_output>-2){
         vtxAna_.setPairID(diphoton_id);
         std::vector<int> & vtxlist = l.vtx_std_ranked_list->at(diphoton_id);

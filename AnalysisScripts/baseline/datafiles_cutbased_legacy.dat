@@ -1,4 +1,4 @@
-intL=19715. histfile=/store/group/phys_higgs/cmshgg/analyzed/legacy/cutbased/8TeV/%(label)s/CMS-HGG.root output=eventsList.txt
+intL=19620. histfile=/store/cmst3/user/musella/hgg/vbf_systematics/legacy_systematics_v1/cutb/%(label)s/CMS-HGG.root output=eventsList.txt
 
 #
 # Data

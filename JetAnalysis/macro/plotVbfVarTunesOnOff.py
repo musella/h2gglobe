@@ -12,14 +12,21 @@ if __name__ == "__main__":
     # open input files
     #
     nominal = [ "TuneZ2Star" ]
-    tunes = [ "TuneZ2Star", "TuneUEOFF",  "TuneProQ20", "TuneProPT0",  "TuneP0", "TuneD6T" ]
-    nameTemplate = "/tmp/musella/histograms_CMS-HGG_mva_%s.root"
+    tunes = [ "TuneZ2Star", "TuneZ2StarUEOFF", "TuneD6T", "TuneD6TUEOFF", ## "TuneProQ20",
+              "TuneProPT0", "TuneProPT0UEOFF", "TuneP0", "TuneP0UEOFF",
+              ]
+    ## nameTemplate = "/tmp/musella/histograms_CMS-HGG_mva_%s.root"
+    nameTemplate = "/afs/cern.ch/user/m/musella/Analysis/CMGTools/H2G_6_1_2/src/h2gglobe_vbf/AnalysisScripts/legacy_systematics_v1/mavtag_%s/histograms_CMS-HGG.root"
 
     styles = [
-        [(setcolors,ROOT.kBlack),("SetFillStyle",3004),("SetLineWidth",2)],
-        [(setcolors,ROOT.kRed),("SetFillStyle",0),("SetLineWidth",2)],
+        [(setcolors,ROOT.kRed),("SetFillStyle",3004),("SetLineWidth",2)],
+        [(setcolors,ROOT.kRed),("SetFillStyle",0),("SetLineWidth",2),("SetLineStyle",ROOT.kDashed)],
+        [(setcolors,ROOT.kOrange),("SetFillStyle",0),("SetLineWidth",2)],
+        [(setcolors,ROOT.kOrange),("SetFillStyle",0),("SetLineWidth",2),("SetLineStyle",ROOT.kDashed)],
         [(setcolors,ROOT.kBlue),("SetFillStyle",0),("SetLineWidth",2)],
+        [(setcolors,ROOT.kBlue),("SetFillStyle",0),("SetLineWidth",2),("SetLineStyle",ROOT.kDashed)],
         [(setcolors,ROOT.kGreen),("SetFillStyle",0),("SetLineWidth",2)],
+        [(setcolors,ROOT.kGreen),("SetFillStyle",0),("SetLineWidth",2),("SetLineStyle",ROOT.kDashed)],
         [(setcolors,ROOT.kMagenta),("SetFillStyle",0),("SetLineWidth",2)],
         [(setcolors,ROOT.kOrange),("SetFillStyle",0),("SetLineWidth",2)],
         ]
@@ -37,27 +44,27 @@ if __name__ == "__main__":
     os.chdir(outdir)
 
 
-    plots = { "cut_VBFLeadJPt_sequential": [],
-              "cut_VBFSubJPt_sequential": [],
-              "cut_VBF_dEta_sequential": [],
-              "cut_VBF_Zep_sequential": [],
-              "cut_VBF_Mjj_sequential": [],
-              "cut_VBF_dPhi_sequential": [],
-              "cut_VBF_DiPhoPtOverM_sequential": [],
-              "cut_VBF_LeadPhoPtOverM_sequential": [],
-              "cut_VBF_SubPhoPtOverM_sequential": [],
-              
-              "cut_VBFLeadJPt_nminus1": [],
-              "cut_VBFSubJPt_nminus1": [],
-              "cut_VBF_dEta_nminus1": [],
-              "cut_VBF_Zep_nminus1": [],
-              "cut_VBF_Mjj_nminus1": [],
-              "cut_VBF_dPhi_nminus1": [],
-              "cut_VBF_DiPhoPtOverM_nminus1": [],
-              "cut_VBF_LeadPhoPtOverM_nminus1": [],
-              "cut_VBF_SubPhoPtOverM_nminus1": [],
-
-              "vbf_mva": [("Rebin",10),(xrange,(-1.,1.))],
+    plots = { ### "cut_VBFLeadJPt_sequential": [],
+              ### "cut_VBFSubJPt_sequential": [],
+              ### "cut_VBF_dEta_sequential": [],
+              ### "cut_VBF_Zep_sequential": [],
+              ### "cut_VBF_Mjj_sequential": [],
+              ### "cut_VBF_dPhi_sequential": [],
+              ### "cut_VBF_DiPhoPtOverM_sequential": [],
+              ### "cut_VBF_LeadPhoPtOverM_sequential": [],
+              ### "cut_VBF_SubPhoPtOverM_sequential": [],
+              ### 
+              ### "cut_VBFLeadJPt_nminus1": [],
+              ### "cut_VBFSubJPt_nminus1": [],
+              ### "cut_VBF_dEta_nminus1": [],
+              ### "cut_VBF_Zep_nminus1": [],
+              ### "cut_VBF_Mjj_nminus1": [],
+              ### "cut_VBF_dPhi_nminus1": [],
+              ### "cut_VBF_DiPhoPtOverM_nminus1": [],
+              ### "cut_VBF_LeadPhoPtOverM_nminus1": [],
+              ### "cut_VBF_SubPhoPtOverM_nminus1": [],
+              ### 
+              ### "vbf_mva": [("Rebin",10),(xrange,(-1.,1.))],
               "nvtx"   : [(xrange,(0.,50.))]
              }
 

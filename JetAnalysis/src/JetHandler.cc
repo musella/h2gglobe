@@ -324,17 +324,24 @@ void JetHandler::applyJecUncertainty(int ijet, float shift)
 // ---------------------------------------------------------------------------------------------------------------
 void JetHandler::applyJerUncertainty(int ijet, float shift)
 {
+    double genPt = l_.jet_algoPF1_genPt[ijet];
+    double genDr = l_.jet_algoPF1_genDr[ijet];
+    if( genDr > 0.4 || genPt < 10. ) { return; }
+    
     TLorentzVector * p4 = (TLorentzVector*)l_.jet_algoPF1_p4->At(ijet);
     double eta = p4->Eta();
     double ptCor = p4->Pt();
-    double genPt = l_.jet_algoPF1_genPt[ijet];
-
+    
     std::vector<double>::iterator bound =  std::lower_bound( jerEtaBins_.begin(), jerEtaBins_.end(), fabs(eta) );
     int bin = ( bound == jerEtaBins_.begin() ) ? 0 : (bound - jerEtaBins_.begin() - 1);
     double resSf = jerResSf_[bin] + shift*jerResSfErr_[bin]; 
-
+    
     double jetSf=max(0.,(genPt+resSf*(ptCor-genPt)))/ptCor;
-    *p4 *= jetSf;
+    //// std::cout << "applyJerUncertainty " << ptCor << " " << eta << " " << genPt << " " << resSf << " " << jetSf;
+    if( jetSf != 0 ) { 
+	*p4 *= jetSf;
+    }
+    /// std::cout << " " << p4->Pt() << std::endl;
 }
 
 

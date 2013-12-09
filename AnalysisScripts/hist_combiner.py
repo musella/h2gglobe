@@ -45,9 +45,9 @@ cmd = ("hadd %s -f "+taskdir+"/histograms_CMS-HGG.root"+listofhists) % opts
 print "Will execute: \n"
 print "\t\t %s" % cmd
 
-if not yes:
-  print "Happy to hadd?\n"
-  raw_input()
+### if not yes:
+###   print "Happy to hadd?\n"
+###   raw_input()
   
 os.system( cmd )
 

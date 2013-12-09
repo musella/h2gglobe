@@ -32,6 +32,7 @@ if( len(sys.argv) > 2 ):
 jobs = glob.glob( "%s/sub*.sh" % taskdir )
 status = {}
 
+print taskdir
 for j in jobs:
     status[j] = ""
     for stat in "run","fail","done":
