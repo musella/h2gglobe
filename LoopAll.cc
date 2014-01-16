@@ -1073,14 +1073,15 @@ int LoopAll::FillAndReduce(int jentry) {
   //
   // read all inputs 
   //
-  if(!makeDummyTrees){
-    GetEntry(inputBranches, jentry);
-  }
-
-  //b_run->GetEntry(jentry);
-  //b_lumis->GetEntry(jentry);
+  b_run->GetEntry(jentry);
+  b_lumis->GetEntry(jentry);
+  b_event->GetEntry(jentry);
   if(!CheckLumiSelection(run,lumis)){
     return hasoutputfile;
+  }
+
+  if(!makeDummyTrees){
+    GetEntry(inputBranches, jentry);
   }
   countersred[1]++;
 
@@ -1480,6 +1481,11 @@ bool LoopAll::CheckLumiSelection( int run, int lumi )
   static std::string globeRt = ( env != 0 ? env : H2GGLOBE_BASE "/AnalysisScripts");
   static EventFilterFromListStandAlone hcalFilter(globeRt+"/aux/HCALLaser2012AllDatasets.txt.gz");
   if( itype[current] == 0 && ! hcalFilter.filter(this->run,this->lumis,this->event) ) {
+	  return false;
+  }
+  
+  static EventFilterFromListStandAlone evFilter(eventSelection);
+  if( ! eventSelection.empty() && evFilter.filter(this->run,this->lumis,this->event) ) {
 	  return false;
   }
   

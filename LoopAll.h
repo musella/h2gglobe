@@ -299,6 +299,7 @@ class LoopAll {
   void GetEntry(std::set<TBranch *> & branches, int jentry);
 
   bool CheckLumiSelection( int run, int lumi );
+  std::string eventSelection;
   bool CheckEventList( int run, int lumi, int event );
 
   void StoreConfigFile(std::string);
