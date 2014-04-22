@@ -1,6 +1,7 @@
 #include "../interface/CategoryOptimizer.h"
 #include "TMath.h"
 #include "TMinuitMinimizer.h"
+#include <cmath>
 
 // ---------------------------------------------------------------------------------------------
 GenericFigureOfMerit::GenericFigureOfMerit(std::vector<AbsModelBuilder *> & sig, std::vector<AbsModelBuilder *> & bkg, 
@@ -34,6 +35,9 @@ double GenericFigureOfMerit::DoEval(const double * x) const
 
 double penalty(double distance)
 {
+	if( ! std::isfinite(distance) ) { 
+		distance = 1.e+6;
+	}
 	return 6.52896*(1.-TMath::Erf(100.*(distance-1.+0.01)))/(distance*distance*distance+0.3*0.3*0.3);
 }
 
@@ -205,7 +209,7 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 			transformPdf->Scale(1./transformPdf->Integral());
 			/// transformPdf->Print("all");
 			float max = transformPdf->GetMaximum();
-			if( max > tmpcutoffs[idim] ) { 
+			if( tmpcutoffs[idim]!=0. && max > tmpcutoffs[idim] ) { 
 				std::cout << "Moving cutofff for dimension " << idim << " (" << dimnames_[idim] << ")" 
 					  << tmpcutoffs[idim] << " -> " << max << std::endl;
 				tmpcutoffs[idim] = max;
@@ -273,9 +277,12 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 				if( ival ) {
 					paramsToScan.push_back(
 						std::make_pair(bestFit.size()-1,
-							       std::make_pair(inv_transformations_[idim]->eval(*ival),max)));
+							       std::make_pair(inv_transformations_[idim]->eval(*ival)+tmpcutoffs[idim],
+									      max-tmpcutoffs[idim])));
 				} else {
-					paramsToScan.push_back(std::make_pair(bestFit.size()-1,std::make_pair(min,max) ));
+					paramsToScan.push_back(std::make_pair(bestFit.size()-1,
+									      std::make_pair(first-range/(double)ncat,max)));
+							       /// std::make_pair(min,max) ));
 				}
 			}
 		}
@@ -311,10 +318,14 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 						if(ival) { 
 							paramsToScan.push_back(
 								std::make_pair(bestFit.size()-1,
-									       std::make_pair(inv_transformations_[idim]->eval(*ival),
-											      bestFit[bestFit.size()-2])));
+									       std::make_pair(inv_transformations_[idim]->eval(*ival)+tmpcutoffs[idim],
+											      bestFit[bestFit.size()-2]-tmpcutoffs[idim])));
 						} else {
-							paramsToScan.push_back(std::make_pair(bestFit.size()-1,std::make_pair(min,max)));
+							paramsToScan.push_back(std::make_pair(bestFit.size()-1,
+											      std::make_pair( std::max(min,first - ((double)ibound+1)*range/(double)ncat),
+											      first - ((double)ibound-1)*range/(double)ncat)
+										       ));
+									       /// std::make_pair(min,max)));
 						}
 					}
 				} else {

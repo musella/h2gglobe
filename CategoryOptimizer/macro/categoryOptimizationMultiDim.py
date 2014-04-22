@@ -36,7 +36,7 @@ def getBoundaries(ndim,ncat,optimizer, summary):
     else:
         tmp = numpy.array([0.],dtype='d')
         z = optimizer.getBoundaries(ncat,boundaries,tmp)
-    if not ncat in summary or summary[ncat]["fom"] < z: 
+    if not ncat in summary or float(summary[ncat]["fom"]) > z: 
         summary[ncat] =  { "fom" : z, "boundaries" : list(boundaries), "ncat": ncat }
         if len(selections) > 0: 
             summary[ncat]["selections"]=list(selections)
@@ -56,7 +56,7 @@ def optmizeCats(optimizer,ws,ndim,rng,args,readBack=False,reduce=False,refit=0):
                 for ncat,val in summary.iteritems():
                     if options.maxcat and int(ncat) > options.maxcat or options.mincat and int(ncat) < options.mincat:
                         continue
-                    tmp[ncat] = val
+                    tmp[int(ncat)] = val
                 summary = tmp
         except:
             summary = {}
@@ -65,7 +65,12 @@ def optmizeCats(optimizer,ws,ndim,rng,args,readBack=False,reduce=False,refit=0):
     print "Fitting"
     print 
     for iter in rng:
-        optimizer.optimizeNCat(iter,*args)
+        if iter in summary:
+            boundaries = numpy.array([float(b) for b in summary[iter]["boundaries"]])
+            aargs = args+(boundaries,)
+            optimizer.optimizeNCat(iter,*aargs)
+        else:
+            optimizer.optimizeNCat(iter,*args)
         getBoundaries(ndim,iter, optimizer, summary )
 
     for ncat,val in summary.iteritems():
@@ -146,22 +151,39 @@ def mergeTrees(tfile,sel,outname,trees,aliases):
     tlist = ROOT.TList()
     print
     print "Reading trees for sample ", outname
-    for name,selection in trees:
-        tree=tfile.Get(name)
-        print "%s '%s' '%s'" % (name, selection, sel)
-        if sel != "":
-            selection = str(ROOT.TCut(selection)*ROOT.TCut(sel))
-        if selection != "":
-            clone = tree.CopyTree(selection)
-            tree = clone
-        tlist.Add(tree)
-    out=ROOT.TTree.MergeTrees(tlist)
+    tryread = tfile.Get(outname)
+    if tryread != None:
+        print "Tree found in input file ", outname, tryread
+        out = tryread.CopyTree("")
+    else:
+        for name,selection in trees:
+            tree=tfile.Get(name)
+            for aname, definition in aliases:
+                tree.SetAlias( aname,definition )
+            print "%s '%s' '%s'" % (name, selection, sel)
+            if sel != "":
+                selection = str(ROOT.TCut(selection)*ROOT.TCut(sel))
+            if selection != "":
+                clone = tree.CopyTree(selection)
+                tree = clone
+            tlist.Add(tree)
+        out=ROOT.TTree.MergeTrees(tlist)
+        
     out.SetName(outname)
     for name, definition in aliases:
         out.SetAlias( name,definition )
+    
     return out
 
 objs = []
+
+def defineAliases(inp):
+    ret = []
+    for name in inp:
+        name, definition = [ tok.lstrip(" ").rstrip(" ") for tok in name.split(":=") if tok != "" ]
+        ret.append( (name,definition) )
+    return ret
+
 
 # -----------------------------------------------------------------------------------------------------------
 def defineVariables(variables,label):
@@ -244,12 +266,14 @@ def optimizeMultiDim(options,args):
     ws = None
 
     cutoffs = numpy.array([cutoff]*ndim)
+
+    aliases = defineAliases( getattr(options,"aliases",[]) )
     
     obs,obsalias = defineVariables( [observable], options.label )
     obs = obs[0]
     mu = ROOT.RooRealVar("mu","mu",1.,0.,10.)
     
-    varlist,aliases = defineVariables( variables, options.label )
+    varlist,varaliases = defineVariables( variables, options.label )
     sellist,selaliases = defineVariables( selectioncuts, options.label )
 
     subcats = getattr(options,"subcategories",None)
@@ -286,7 +310,7 @@ def optimizeMultiDim(options,args):
                     weights[newname] = weights[sampname]
     else:
         siglist = [ (name,trees) for name,trees in signals.iteritems() ]
-        bkglist = [ (name,trees) for name,trees in signals.iteritems() ]
+        bkglist = [ (name,trees) for name,trees in backgrounds.iteritems() ]
         nsubcats = 1
         
     print "\n---------------------------------------------"
@@ -301,7 +325,7 @@ def optimizeMultiDim(options,args):
     print "Selection cuts"
     sellist.Print("V")
 
-    aliases.extend(obsalias+selaliases)
+    aliases.extend(obsalias+varaliases+selaliases)
     print
     print "Aliases"
     pprint(aliases)
@@ -324,7 +348,10 @@ def optimizeMultiDim(options,args):
 
     if not os.path.exists("/tmp/%s" % os.getlogin()):
         os.mkdir("/tmp/%s" % os.getlogin())
-    tmp = ROOT.TFile.Open("/tmp/%s/categoryOptimizationMultiDim_%s.root" % (os.getlogin(),options.label) ,"recreate")
+    if options.onlytrees:
+        tmp = ROOT.TFile.Open("/tmp/%s/categoryOptimizationMultiDim_trees_%s.root" % (os.getlogin(),options.label) ,"recreate")
+    else:
+        tmp = ROOT.TFile.Open("/tmp/%s/categoryOptimizationMultiDim_%s.root" % (os.getlogin(),options.label) ,"recreate")
     tmp.cd()
 
     ### ##########################################################################################################
@@ -723,6 +750,11 @@ if __name__ == "__main__":
                         default=False,
                         help="do not run the optimization only find equidistant boundaries"
                         "\n  useful in conjunction with reduce and refit",
+                        ),
+            make_option("-f", "--fix",
+                        action="append", dest="fix", type="string",
+                        default=[],
+                        help="Fix selection cut"
                         ),
             make_option("-R", "--refit",
                         action="store", dest="refit", type="int",
