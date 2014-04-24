@@ -43,7 +43,7 @@ def getBoundaries(ndim,ncat,optimizer, summary, overwrite=False):
     objs.append((boundaries,selections))
 
 # -----------------------------------------------------------------------------------------------------------
-def optmizeCats(optimizer,ws,ndim,rng,args,readBack=False,reduce=False,refit=0):
+def optmizeCats(optimizer,ws,ndim,rng,args,readBack=False,reduce=False,refit=0,settings=None):
     
     summary = {}
     if readBack:
@@ -110,6 +110,8 @@ def optmizeCats(optimizer,ws,ndim,rng,args,readBack=False,reduce=False,refit=0):
                 ncat=int(ncat)
                 ## setSelections(optimizer,summary)
                 eargs = [a for a in args]
+                if options.dryrefit:
+                    eargs[1] = True
                 eargs.append(boundaries)
                 rng.append(ncat)
                 optimizer.optimizeNCat(ncat,*eargs)
@@ -124,7 +126,13 @@ def optmizeCats(optimizer,ws,ndim,rng,args,readBack=False,reduce=False,refit=0):
 
     sout = open("cat_opt.json","w+")
     sout.write( json.dumps(summary,sort_keys=True, indent=4) )
-
+    sout.close()
+    
+    if settings:
+        sout = open("setup.json","w+")
+        sout.write( json.dumps(settings,sort_keys=True, indent=4) )
+        sout.close()
+        
     return summary
 
 # -----------------------------------------------------------------------------------------------------------
@@ -358,6 +366,14 @@ def optimizeMultiDim(options,args):
         tmp = ROOT.TFile.Open("/tmp/%s/categoryOptimizationMultiDim_%s.root" % (os.getlogin(),options.label) ,"recreate")
     tmp.cd()
 
+
+    ## store some option in output json for reference
+    storeOpts = { "variables"  : [ varlist[jv].GetName() for jv in range(varlist.getSize()) ],
+                  "selections" : [ sellist[js].GetName() for js in range(sellist.getSize()) ],
+                  "file"       : tmp.GetName(),
+                  "observable" : [obs.GetName(),obs.getMin(),obs.getMax()]
+                 }
+    
     ### ##########################################################################################################
     ### Minimizer and optimizer
     ###
@@ -517,9 +533,9 @@ def optimizeMultiDim(options,args):
         optimizer.addBackground( bkgModel )
     optimizer.setFigureOfMerit( fom )
 
-    
     summary = optmizeCats( optimizer, ws, varlist.getSize(),
-                           options.range, (cutoffs,options.dry,True,), options.cont, options.reduce, options.refit )
+                           options.range, (cutoffs,options.dry,True,), options.cont, options.reduce, options.refit,
+                           storeOpts )
     
     ### #########################################################################################################
     ### Some plots
@@ -760,7 +776,9 @@ if __name__ == "__main__":
             make_option("--settings",
                         action="store", dest="settings",
                         default=[],
-                        help="append string to optimizer setting",
+                        help="append string to optimizer settings"
+                        "\n   (ie the list of methods to be called after initialization"
+                        "\n    see the CategoryOptimizer class for details)",
                         ),
             make_option("-n", "--ncat",
                         action="append", dest="range", type="int",
@@ -773,14 +791,21 @@ if __name__ == "__main__":
                         help="do not run the optimization only find equidistant boundaries"
                         "\n  useful in conjunction with reduce and refit",
                         ),
+            make_option("-D", "--dryrefit",
+                        action="store_true", dest="dryrefit",
+                        default=False,
+                        help="do not run the optimization when refitting"
+                        "\n  useful to scan parameters around the miniumum"
+                        "\n   (achieved with CategoryOptimizer::setScan)",
+                        ),
             make_option("-f", "--fix",
                         action="append", dest="fix", type="string",
                         default=[],
                         help="Fix selection cut"
                         ),
             make_option("-R", "--refit",
-                        action="store", dest="refit", type="int",
-                        default=0,
+                        action="store_true", dest="refit",
+                        default=False,
                         help="refit the best point after reduction"
                         ),
             make_option("-S", "--splitreduce",

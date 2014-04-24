@@ -148,7 +148,7 @@ public:
 		if( mean*mean - rms > 0. ) {
 			rms = sqrt( mean*mean - rms );
 		} else {
-			rms = 1.e-2*mean;
+			rms = 1.e-1*mean;
 			/// norm = 0.;
 			///// if( model_.getShape() == SecondOrderModel::gaus ) { 
 			///// 	ret = false;

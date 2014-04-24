@@ -453,45 +453,6 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 
 	std::copy( bestFit.begin(), bestFit.end(), std::ostream_iterator<double>(std::cout, ",") );
 	std::cout << std::endl;
-	///// // Refit last boundaries
-	///// if( refitLast_ ) {
-	///// 	assert( orthocuts_.size() == 0 );
-	///// 	TMinuitMinimizer * minuit = dynamic_cast<TMinuitMinimizer*>(minimizer_);
-	///// 	assert(minuit != 0);
-	///// 
-	///// 	std::vector<double> step0(minimizer_->X(),minimizer_->X()+minimizer_->NDim());
-	///// 	int nrefit = 1;
-	///// 	for(int idim=0; idim<ndim_; ++idim) {
-	///// 		double min = sigModels_[0]->getMin(idim);
-	///// 		double max = sigModels_[0]->getMax(idim);
-	///// 		if( ! transformations_.empty() && transformations_[idim]!=0 ) {
-	///// 			min = 0.; max = 1.;
-	///// 		}
-	///// 		double range = max - min;
-	///// 		minuit->FixVariable(idim*nbound);
-	///// 		minuit->FixVariable(idim*nbound + icat +1);
-	///// 	
-	///// 		for(int icat=ncat-nrefit; icat<ncat; ++icat) {
-	///// 			if( telescopicBoundaries_ ) {
-	///// 				minuit->SetLimitedVariable(idim*nbound + icat +1,
-	///// 							       Form( "deltaBoundDim%dBin%d", idim, icat ), 
-	///// 							       range/(double)ncat,   // FIXME smarter initialization
-	///// 							       tmpcutoffs[idim]*0.5, tmpcutoffs[idim], range );
-	///// 			} else {
-	///// 				minuit->SetLimitedVariable(idim*nbound + icat +1,
-	///// 							       Form( "absBoundDim%dBin%d", idim, icat ), 
-	///// 							       step0[idim*nbound + nrefit] - tmpcutoffs[idim]*2.,
-	///// 							       tmpcutoffs[idim]*0.5, 
-	///// 							       min, max );
-	///// 			}
-	///// 
-	///// 		}
-	///// 	}
-	///// 	
-	///// 	minimizer_->PrintResults();
-	///// 	minimizer_->Minimize();
-	///// 	minimizer_->PrintResults();
-	///// }
 	
 	// store results
 	//// std::vector<double> bestFit(minimizer_->X(),minimizer_->X()+minimizer_->NDim());

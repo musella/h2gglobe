@@ -14,19 +14,23 @@
 				 "nlsMoMD := TMath::Max(-1.5,-(log(decorrSigmaMrvoM)+5))",
 				 "isEE1   := (! isEB1)",
 				 "isEE2   := (! isEB2)",
-				 "isEBHighR91     := isEB1 && r91 > 0.94",
-				 "isEBHighR92     := isEB2 && r92 > 0.94",
-				 "isEEHighR91     := isEE1 && r91 > 0.94",
-				 "isEEHighR92     := isEE2 && r92 > 0.94",
+				 "isEBHighR91     := isEB1 && r91 >  0.94",
+				 "isEBHighR92     := isEB2 && r92 >  0.94",
+				 "isEBLowR91      := isEB1 && r91 <= 0.94",
+				 "isEBLowR92      := isEB2 && r92 <= 0.94",
+				 "isEEHighR91     := isEE1 && r91 >  0.94",
+				 "isEEHighR92     := isEE2 && r92 >  0.94",
+				 "isEELowR91      := isEE1 && r91 <= 0.94",
+				 "isEELowR92      := isEE2 && r92 <= 0.94",
                                  
 				 "ebmva   := ( ( isEB1 &&  isEB2)*TMath::Min(idmva1,idmva2) + ( isEB1 && !isEB2)*idmva1 + (!isEB1 &&  isEB2)*idmva2 + (!isEB1 && !isEB2)*0.95 )",
 				 "eemva   := ( (!isEB1 && !isEB2)*TMath::Min(idmva1,idmva2) + (!isEB1 &&  isEB2)*idmva1 + ( isEB1 && !isEB2)*idmva2 + ( isEB1 &&  isEB2)*0.95 )",
                                  
 				 "ebhmva  := ( ( isEBHighR91 &&  isEBHighR92)*TMath::Min(idmva1,idmva2) + ( isEBHighR91 && !isEBHighR92)*idmva1 + (!isEBHighR91 &&  isEBHighR92)*idmva2 + (!isEBHighR91 && !isEBHighR92)*0.95 )",
-				 "eblmva  := ( ( isEBHighR91 &&  isEBHighR92)*TMath::Min(idmva1,idmva2) + ( isEBHighR91 && !isEBHighR92)*idmva1 + (!isEBHighR91 &&  isEBHighR92)*idmva2 + (!isEBHighR91 && !isEBHighR92)*0.95 )",
+				 "eblmva  := ( (  isEBLowR91 &&   isEBLowR92)*TMath::Min(idmva1,idmva2) + (  isEBLowR91 && ! isEBLowR92)*idmva1 + (! isEBLowR91 &&   isEBLowR92)*idmva2 + (! isEBLowR91 && ! isEBLowR92)*0.95 )",
                                  
 				 "eehmva  := ( ( isEEHighR91 &&  isEEHighR92)*TMath::Min(idmva1,idmva2) + ( isEEHighR91 && !isEEHighR92)*idmva1 + (!isEEHighR91 &&  isEEHighR92)*idmva2 + (!isEEHighR91 && !isEEHighR92)*0.95 )",
-				 "eelmva  := ( ( isEEHighR91 &&  isEEHighR92)*TMath::Min(idmva1,idmva2) + ( isEEHighR91 && !isEEHighR92)*idmva1 + (!isEEHighR91 &&  isEEHighR92)*idmva2 + (!isEEHighR91 && !isEEHighR92)*0.95 )"
+				 "eelmva  := ( (  isEELowR91 &&   isEELowR92)*TMath::Min(idmva1,idmva2) + (  isEELowR91 && ! isEELowR92)*idmva1 + (! isEELowR91 &&   isEELowR92)*idmva2 + (! isEELowR91 && ! isEELowR92)*0.95 )"
 				 ],
         
         "###" : "----------------------------------------------------------------------------------------------",
@@ -48,14 +52,13 @@
         "selection"          : "ptoM1 > 1./3. && ptoM2 > 0.25",
 	"#" : "EB/EE",
         "#selectioncuts"      : [["ebmva",[-0.5,1,0.02],0,[-0.2,0.5]],
-				["eemva",[-0.5,1,0.02],0,[-0.2,0.5]]
+				 ["eemva",[-0.5,1,0.02],0,[-0.2,0.5]]
                                  ],
         "#" : "EB/EE High/Low R9",
-        "selectioncuts"      : [["eblmva",[-0.3,1,0.02],0,[-0.2,0.5]],
-				["ebhmva",[-0.3,1,0.02],0,[-0.2,0.5]],
-				["eelmva",[-0.3,1,0.02],0,[-0.2,0.5]],
-				["eehmva",[-0.3,1,0.02],0,[-0.2,0.5]]
-                                 ],
+        "selectioncuts"      : [["eblmva",[-0.3,1,0.03],0,[-0.2,0.5]],
+				["ebhmva",[-0.3,1,0.03],0,[-0.2,0.5]],
+				["eemva", [-0.3,1,0.03],0,[-0.2,0.5]]
+				],
         
         "###" : "----------------------------------------------------------------------------------------------",
         "###" : "Minimize photon ID MVA fixing sM/M", 
