@@ -1,5 +1,7 @@
 #include "../interface/FunctionHelpers.h"
 
+using namespace std;
+
 // ------------------------------------------------------------------------------------------------
 TH1 * integrate1D(TH1 * h, bool normalize) {
 	TH1 * ret= (TH1*)h->Clone( Form("%s_cdf", h->GetName() ) );
@@ -85,4 +87,37 @@ HistoConverter * cdf(TH1 * h,double min, double max)
 	/// std::cout << min << " " << max << " " << invg->eval(1.-last) << " " << g.GetY()[g.GetN()-1] << " " << invg->eval(g.GetY()[g.GetN()-1]) << " " << invg->eval(1.) << std::endl;
 	delete hi;
 	return invg;
+}
+
+// ------------------------------------------------------------------------------------------------
+DecorrTransform::DecorrTransform(TH2 * histo, float ref, bool doRatio) : doRatio_(doRatio)
+{
+	refbin_ = histo->GetXaxis()->FindBin(ref);
+	hist_ = histo;
+	double miny = histo->GetYaxis()->GetXmin();
+	double maxy = histo->GetYaxis()->GetXmax();
+	for(int ii=0; ii<histo->GetNbinsX()+1; ++ii) {
+		TH1 * proj = histo->ProjectionY(Form("%s_%d",histo->GetName(),ii),ii,ii);
+		dirtr_.push_back(cdf(proj,miny,maxy));
+		if( ii == refbin_ ) {
+			invtr_ = cdfInv(proj,miny,maxy);
+		}
+	}
+}
+
+// ------------------------------------------------------------------------------------------------
+double DecorrTransform::operator() (double *x, double *p)
+{
+	int ibin = hist_->GetXaxis()->FindBin(x[0]);
+	double ret = x[1];
+	/// if( ibin != refbin_ ) {
+	ret = invtr_->eval(dirtr_[ibin]->eval(x[1]));
+        /// }
+	return (doRatio_?ret/x[1]:ret);
+}
+
+// ------------------------------------------------------------------------------------------------
+HistoConverter * DecorrTransform::clone() const
+{
+	return new DecorrTransform(*this);
 }

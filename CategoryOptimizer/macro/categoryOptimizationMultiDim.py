@@ -26,7 +26,7 @@ def loadSettings(cfgs,dest,macros):
             setattr(dest,k,v)
         cf.close()
 
-def getBoundaries(ndim,ncat,optimizer, summary):
+def getBoundaries(ndim,ncat,optimizer, summary, overwrite=False):
     print ndim, ncat
     boundaries = numpy.array([0. for i in range(ndim*(ncat+1)) ],dtype='d')
     selections = numpy.array([0. for i in range(optimizer.nOrthoCuts()) ],dtype='d')
@@ -36,7 +36,7 @@ def getBoundaries(ndim,ncat,optimizer, summary):
     else:
         tmp = numpy.array([0.],dtype='d')
         z = optimizer.getBoundaries(ncat,boundaries,tmp)
-    if not ncat in summary or float(summary[ncat]["fom"]) > z: 
+    if overwrite or not ncat in summary or float(summary[ncat]["fom"]) > z: 
         summary[ncat] =  { "fom" : z, "boundaries" : list(boundaries), "ncat": ncat }
         if len(selections) > 0: 
             summary[ncat]["selections"]=list(selections)
@@ -58,7 +58,8 @@ def optmizeCats(optimizer,ws,ndim,rng,args,readBack=False,reduce=False,refit=0):
                         continue
                     tmp[int(ncat)] = val
                 summary = tmp
-        except:
+        except Exception as e:
+            print "Error reading back last step results:\n", e
             summary = {}
             
     print "\n---------------------------------------------"
@@ -71,7 +72,7 @@ def optmizeCats(optimizer,ws,ndim,rng,args,readBack=False,reduce=False,refit=0):
             optimizer.optimizeNCat(iter,*aargs)
         else:
             optimizer.optimizeNCat(iter,*args)
-        getBoundaries(ndim,iter, optimizer, summary )
+        getBoundaries(ndim,iter, optimizer, summary, True )
 
     for ncat,val in summary.iteritems():
         printBoundaries(ndim,val["boundaries"],val["fom"],val.get("selections",None))
@@ -198,14 +199,17 @@ def defineVariables(variables,label):
             aliases.append( (name,definition) )
         xmin,xmax,nbins = var[1]
         default = xmin
-        if len(var) == 3:
+        if len(var) >= 3:
             default = float(var[2])
         if type(nbins) == float:
             nbins = int( (xmax-xmin)/nbins )
-        var = ROOT.RooRealVar(name,name,default,xmin,xmax)
-        var.setBins(nbins)
-        objs.append(var)
-        arglist.add( var )
+        rvar = ROOT.RooRealVar(name,name,default,xmin,xmax)
+        rvar.setBins(nbins)
+        if len(var) >= 4:
+            nmin,nmax = var[3]
+            rvar.setBinning(ROOT.RooUniformBinning(nmin,nmax,int((nmax-nmin)/(xmax-xmin)*nbins)),"normRng")
+        objs.append(rvar)
+        arglist.add( rvar )
 
     return arglist,aliases
         
@@ -539,6 +543,11 @@ def optimizeMultiDim(options,args):
         name = var.GetName()
         minX = var.getMin()
         maxX = var.getMax()
+        minNrm = minX
+        maxNrm = maxX
+        if var.hasBinning("normRng"):
+            minNrm = var.getMin("normRng")
+            maxNrm = var.getMax("normRng")
         nbinsX = var.getBinning().numBoundaries()-1
         hbound = ROOT.TH2F("hbound_%s" % name,"hbound_%s" % name,nbinsX+3,minX-1.5*(maxX-minX)/nbinsX,maxX+1.5*(maxX-minX)/nbinsX,ncat+3,mincat-1.5,maxcat+1.5)
         for jcat,val in summary.iteritems():
@@ -570,14 +579,18 @@ def optimizeMultiDim(options,args):
             pdf.Scale(1./pdf.Integral())
             pdf.SetLineColor(ROOT.kBlue)
             pdfs.append(pdf)
+            pdf.GetXaxis().SetRangeUser(minNrm,maxNrm)
             maxy = max(maxy,pdf.GetMaximum())
+            pdf.GetXaxis().SetRangeUser(minX,maxX)
             objs.append(pdf)
         for bkg in backgrounds:
             pdf = bkg.getPdf(idim)
             pdf.Scale(1./pdf.Integral())
             pdf.SetLineColor(ROOT.kRed)
             pdfs.append(pdf)
+            pdf.GetXaxis().SetRangeUser(minNrm,maxNrm)
             maxy = max(maxy,pdf.GetMaximum())
+            pdf.GetXaxis().SetRangeUser(minX,maxX)
             objs.append(pdf)
             
         ### hbound_pj.Scale(maxy*hbound_pj.GetMaximum())
@@ -606,6 +619,11 @@ def optimizeMultiDim(options,args):
         minX = var.getMin()
         maxX = var.getMax()
         nbinsX = var.getBinning().numBoundaries()-1
+        minNrm = minX
+        maxNrm = maxX
+        if var.hasBinning("normRng"):
+            minNrm = var.getMin("normRng")
+            maxNrm = var.getMax("normRng")
         print var, name, minX, maxX, nbinsX
         hsel = ROOT.TH2F("hsel_%s" % name,"hsel_%s" % name,nbinsX+3,minX-1.5*(maxX-minX)/nbinsX,maxX+1.5*(maxX-minX)/nbinsX,ncat+3,mincat-1.5,maxcat+1.5)
         for jcat,val in summary.iteritems():
@@ -634,19 +652,23 @@ def optimizeMultiDim(options,args):
             pdf.SetLineColor(ROOT.kBlue)
             pdf.Scale(1./pdf.Integral())
             pdfs.append(pdf)
+            pdf.GetXaxis().SetRangeUser(minNrm,maxNrm)
             maxy = max(maxy,pdf.GetMaximum())
+            pdf.GetXaxis().SetRangeUser(minX,maxX)
             objs.append(pdf)
         for bkg in backgrounds:
             pdf = bkg.getPdf(ndim+isel)
             pdf.Scale(1./pdf.Integral())
             pdf.SetLineColor(ROOT.kRed)
             pdfs.append(pdf)
+            pdf.GetXaxis().SetRangeUser(minNrm,maxNrm)
             maxy = max(maxy,pdf.GetMaximum())
+            pdf.GetXaxis().SetRangeUser(minX,maxX)
             objs.append(pdf)
             
         for pdf in pdfs:
             pdf.Scale( (ncat+1.5)/maxy/pdf.Integral() )
-            pdf.Draw("l same")
+            pdf.Draw("hist same")
         hsel_pj.GetYaxis().SetNdivisions(500+ncat+3)
         csel_pj.SetGridy()
         hsel_pj.Draw("box same")

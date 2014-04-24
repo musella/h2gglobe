@@ -156,7 +156,7 @@ public:
 			///// }
 		}
 		if( norm <= model_.minEvents()*1.02 ) { 
-			std::cout << " too few events  " << norm << " " << model_.minEvents() <<std::endl;
+			//// std::cout << " too few events  " << norm << " " << model_.minEvents() <<std::endl;
 			penalty_ = norm/model_.minEvents(); 
 			ret = false; 
 		}

@@ -93,9 +93,9 @@ void makeSecondOrder(THnSparse * in, THnSparse * red, SparseIntegrator * norm, S
 		delete hx;
 	}
 	
-	norm->link();
-	sumX->link();
-	sumX2->link();
+	/// norm->link();
+	/// sumX->link();
+	/// sumX2->link();
 }
 
 
@@ -124,9 +124,9 @@ void makeSecondOrder(std::vector<TH1*> & histos, SparseIntegrator * norm, Sparse
 	}
 	histos.clear();
 	
-	norm->link();
-	sumX->link();
-	sumX2->link();
+	/// norm->link();
+	/// sumX->link();
+	/// sumX2->link();
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 #include "../interface/CategoryOptimizer.h"
+#include "TCanvas.h"
 #include "TMath.h"
 #include "TMinuitMinimizer.h"
 #include <cmath>
@@ -141,11 +142,11 @@ double GenericFigureOfMerit::operator() (double *x, double *p) const
 			/// std::cout << std::endl;
 			for(std::vector<AbsModelBuilder *>::const_iterator imod=allModels_.begin(); imod!=allModels_.end(); ++imod ) {
 				if( ! (*imod)->addBoundary(&newb[0]) ) { 
-					std::cout << "adding penalty from model " 
-						  << (*imod)->getModel()->getType() 
-						  << " " << (*imod)->getModel()->getNcat() 
-						  << " " << (*imod)->getModel()->getCategoryYield( 
-							  (*imod)->getModel()->getNcat() -1 ) << std::endl;
+					//// std::cout << "adding penalty from model " 
+					//// 	  << (*imod)->getModel()->getType() 
+					//// 	  << " " << (*imod)->getModel()->getNcat() 
+					//// 	  << " " << (*imod)->getModel()->getCategoryYield( 
+					//// 		  (*imod)->getModel()->getNcat() -1 ) << std::endl;
 					ret += penalty((*imod)->getPenalty());
 				}
 			}
@@ -246,6 +247,7 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 	const double * ival = initial_values;
 	std::vector<double> bestFit;
 	double best = 1.e+6;
+	std::map<int,int> parToDim;
 	
 	// Define category boundaries. 
 	// Last boundary fixed to the maximum range in each dimension
@@ -253,13 +255,11 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 		TString dimname = ( dimnames_[idim] != "" ? dimnames_[idim] :  Form("dim%d",idim) );
 		double min = sigModels_[0]->getMin(idim);
 		double max = sigModels_[0]->getMax(idim);
-		if( ! transformations_.empty() && transformations_[idim]!=0 ) {
+		bool hasTransform = ( ! transformations_.empty() && transformations_[idim]!=0 );
+		if( hasTransform ) {
 			min = 0.; max = 1.;
 		}
 		double first = max;
-		//// if( ! floatFirst_ ) {
-		//// 	max -= tmpcutoffs[idim];
-		//// }
 		double range = (max - min);
 		if( ival ) {
 			bestFit.push_back(inv_transformations_[idim]->eval(*ival)); ++ival;
@@ -274,8 +274,9 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 						       bestFit.back(), range, // tmpcutoffs[idim]*speed_,
 						       min, max );
 			if( scan_ > 0 && scanBoundaries_ ) { 
+				if( hasTransform ) { parToDim[bestFit.size()-1] = idim;}
 				if( ival ) {
-					paramsToScan.push_back(
+					paramsToScan.push_back(						
 						std::make_pair(bestFit.size()-1,
 							       std::make_pair(inv_transformations_[idim]->eval(*ival)+tmpcutoffs[idim],
 									      max-tmpcutoffs[idim])));
@@ -315,6 +316,7 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 								       range, // tmpcutoffs[idim]*speed_, 
 								       min, max );
 					if( scan_ > 0 && scanBoundaries_ ) { 
+						if( hasTransform ) { parToDim[bestFit.size()-1] = idim;}
 						if(ival) { 
 							paramsToScan.push_back(
 								std::make_pair(bestFit.size()-1,
@@ -378,13 +380,14 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 				);
 			if( scan_ > 0 ) { 
 				paramsToScan.push_back(std::make_pair(bestFit.size()-1,
-								      std::make_pair(min+0.2*(max-min),max-0.2*(max-min))));
+								      /// std::make_pair(min+0.2*(max-min),max-0.2*(max-min))));
+								      std::make_pair(start-0.5*(start-min),start+0.5*(max-start))));
 			}
 		}
 	}
 	
 	/// std::vector<double> x(scan_), y(+1);
-	double x[100], y[100];
+	double x[100], y[100], xp[100];
 	if( scan_>0 ) { 
 		for( int irep=0; irep<repeat_; ++irep ) {
 			std::cout << "Scanning parameters " << std::endl;
@@ -393,18 +396,41 @@ double CategoryOptimizer::optimizeNCat(int ncat, const double * cutoffs, bool dr
 			for(int ii=paramsToScan.size()-1; ii>=0; --ii) {
 				int ipar = paramsToScan[ii].first;
 				std::pair<double,double> rng = paramsToScan[ii].second;
-				std::cout << ipar << " " << rng.first << " " << rng.second << std::endl;
+				/// std::cout << ipar << " " << rng.first << " " << rng.second << std::endl;
 				minimizer_->Scan(ipar,nstep,&x[0],&y[0],rng.first,rng.second);
-				/// minimizer_->SetVariableValue(ipar, x[ std::min_element(y.begin(),y.end()) - y.begin()]);
-				std::copy( &x[0], &x[nstep-1], std::ostream_iterator<double>(std::cout, ",") );
-				std::cout << std::endl;
-				std::copy( &y[0], &y[nstep-1], std::ostream_iterator<double>(std::cout, ",") );
-				std::cout << std::endl;		       
+				/// std::copy( &x[0], &x[nstep-1], std::ostream_iterator<double>(std::cout, ",") );
+				/// std::cout << std::endl;
+				/// std::copy( &y[0], &y[nstep-1], std::ostream_iterator<double>(std::cout, ",") );
+				/// std::cout << std::endl;		       
 				minimizer_->PrintResults();
+				TCanvas canv;
+				double * xset = &x[0];
+				std::map<int,int>::iterator idim = parToDim.find(ipar);
+				if( idim != parToDim.end() ) { 
+					xset = &xp[0];
+				}
+				for(int jstep=0; jstep<nstep; ++jstep) {
+					if( idim != parToDim.end() ) { 
+						xp[jstep] = transformations_[idim->second]->eval(x[jstep]);
+					}
+					if( y[jstep] > 0 ) {
+						int dir = jstep > nstep / 2 ? -1 : 1;
+						int kstep = jstep+dir;
+						while( kstep < nstep && kstep >= 0 ) {
+							if( y[kstep] < 0 ) { break; }
+							kstep += dir;
+						}
+						y[jstep] = y[kstep];
+					}					
+				}
+				TGraph gr(nstep,xset, &y[0]);
+				gr.Draw("APL");
+				gr.GetXaxis()->SetTitle( minimizer_->VariableName(ipar).c_str() );
+				canv.SaveAs( Form("scan_ncat%d_%s.png", ncat,  minimizer_->VariableName(ipar).c_str() ) );
+				canv.SaveAs( Form("scan_ncat%d_%s.C", ncat,  minimizer_->VariableName(ipar).c_str() ) );
 			}
 		}
 	}
-	std::cout << "here" << std::endl;
 
 	// Call to the minimization
 	std::cout << "Calling minimization (strategy: " << strategy_ << ")" << std::endl;

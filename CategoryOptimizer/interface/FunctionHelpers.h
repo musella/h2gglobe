@@ -25,7 +25,8 @@ public:
 	};
 
 	virtual double operator() (double *x, double *p) = 0;
-
+	double operator() (double x) { return eval(x); };
+	
 	double DoEval(const double * x) const { 
 		std::vector<double> xv(3,0.);
 	}
@@ -239,7 +240,7 @@ class IntegrationNode
 {
 public:
 	IntegrationNode(int id, std::vector<double> coord, double w) : 
-		id_(id), coord_(coord), weight_(w), sum_(weight_), hasSum_(false)
+		id_(id), coord_(coord), weight_(w), sum_(weight_), hasSum_(false), linked_(false)
 		{};
 	
 	class weakLess {
@@ -278,6 +279,8 @@ public:
 	};
 	
 	void fill(double w) { weight_+=w; sum_+=w; };
+	bool isLinked() { return linked_; }
+	void linked(bool x=true) { linked_=x; }
 	
 	void print(std::ostream & out) const {
 		out << "IntegrationNode " << id_ << " " << weight_;
@@ -318,7 +321,7 @@ private:
 	std::vector<double> coord_;
 	double weight_;
 	double sum_;
-	bool hasSum_;
+	bool hasSum_, linked_;
 	
 	std::list<IntegrationNode *> children_;
 	
@@ -345,6 +348,7 @@ public:
 				}
 				++jt;
 			}
+			(*it)->linked(true);						
 		}
 	};
 	
@@ -412,16 +416,17 @@ protected:
 		iterator inode = lower_bound(&tmp);
 		if( inode == end() || key_comp()(**inode,tmp) || key_comp()(tmp,**inode) ) {
 			inode = insert( inode, new IntegrationNode(size(),volume,0.) );
+		}
+		if( link && ! (*inode)->isLinked() ) { 
 			iterator jnode = inode;
 			++jnode;
-			if( link ) { 
-				while( jnode != end() ) { 
-					if( IntegrationNode::strictLess()(**inode,**jnode) ) {
-						(*inode)->addChild(*jnode);
-					}
-					++jnode;
+			while( jnode != end() ) { 
+				if( IntegrationNode::strictLess()(**inode,**jnode) ) {
+					(*inode)->addChild(*jnode);
 				}
+				++jnode;
 			}
+			(*inode)->linked(true);
 		}
 		//// (*inode)->print(std::cout);
 		return *inode;
@@ -480,6 +485,26 @@ private:
 
 };
 
+
+class DecorrTransform : public HistoConverter
+{
+public:
+	DecorrTransform(TH2 * histo, float ref,bool doRatio=false);
+	
+	virtual double operator() (double *x, double *p);
+	virtual HistoConverter * clone() const;
+	
+	unsigned int NDim() const { return 2; };
+	
+private:
+	TH2 * hist_;
+	int refbin_;
+	double doRatio_;
+	
+	HistoConverter * invtr_;
+	std::vector<HistoConverter *> dirtr_;
+	
+};
 
 #endif 
 
