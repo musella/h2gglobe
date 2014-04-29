@@ -11,7 +11,7 @@
         "###" : "----------------------------------------------------------------------------------------------",
         "##" : "Define extra variables",
         "aliases"             : ["nlsMoM := TMath::Max(-1.5,TMath::Min(-0.1,-(logSigmaMrvoM+5)))",
-				 "nlsMoMD := TMath::Max(-1.5,-(log(decorrSigmaMrvoM)+5))",
+				 "nlsMoMD := TMath::Max(-1.5,TMath::Min(0.,-(log(decorrSigmaMrvoM)+5)))",
 				 "isEE1   := (! isEB1)",
 				 "isEE2   := (! isEB2)",
 				 "isEBHighR91     := isEB1 && r91 >  0.94",
@@ -30,7 +30,9 @@
 				 "eblmva  := ( (  isEBLowR91 &&   isEBLowR92)*TMath::Min(idmva1,idmva2) + (  isEBLowR91 && ! isEBLowR92)*idmva1 + (! isEBLowR91 &&   isEBLowR92)*idmva2 + (! isEBLowR91 && ! isEBLowR92)*0.95 )",
                                  
 				 "eehmva  := ( ( isEEHighR91 &&  isEEHighR92)*TMath::Min(idmva1,idmva2) + ( isEEHighR91 && !isEEHighR92)*idmva1 + (!isEEHighR91 &&  isEEHighR92)*idmva2 + (!isEEHighR91 && !isEEHighR92)*0.95 )",
-				 "eelmva  := ( (  isEELowR91 &&   isEELowR92)*TMath::Min(idmva1,idmva2) + (  isEELowR91 && ! isEELowR92)*idmva1 + (! isEELowR91 &&   isEELowR92)*idmva2 + (! isEELowR91 && ! isEELowR92)*0.95 )"
+				 "eelmva  := ( (  isEELowR91 &&   isEELowR92)*TMath::Min(idmva1,idmva2) + (  isEELowR91 && ! isEELowR92)*idmva1 + (! isEELowR91 &&   isEELowR92)*idmva2 + (! isEELowR91 && ! isEELowR92)*0.95 )",
+				 
+				 "diphoEquivPt := dipho_pt / mass"
 				 ],
         
         "###" : "----------------------------------------------------------------------------------------------",

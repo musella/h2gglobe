@@ -371,7 +371,8 @@ def optimizeMultiDim(options,args):
     storeOpts = { "variables"  : [ varlist[jv].GetName() for jv in range(varlist.getSize()) ],
                   "selections" : [ sellist[js].GetName() for js in range(sellist.getSize()) ],
                   "file"       : tmp.GetName(),
-                  "observable" : [obs.GetName(),obs.getMin(),obs.getMax()]
+                  "observable" : [obs.GetName(),obs.getMin(),obs.getMax()],
+                  "subcategories" : subcats
                  }
     
     ### ##########################################################################################################
