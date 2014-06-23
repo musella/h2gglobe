@@ -2089,6 +2089,8 @@ void StatAnalysis::computeDifferentialVariableCategory(LoopAll &l, int &category
     if (PADEBUG)  std::cout << "njet="<<njet<<" ijet1="<<ijet1<<" ijet2="<<ijet2<<endl;
 		
     DiffAna_Njets = njet;
+    DiffAna_iJet1=ijet1;
+    DiffAna_iJet2=ijet2;
     if (njet>=1){
 	TLorentzVector* jet1 = (TLorentzVector*)l.jet_algoPF1_p4->At(ijet1);
 	DiffAna_LeadJetpT = jet1->Pt();
@@ -2594,7 +2596,7 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
         vbfcat=l.DijetSubCategory(myVBF_Mjj,myVBFLeadJPt,myVBFSubJPt,nVBFDijetJetCategories);
     }
 
-    Float_t njets10=0., njets15=0., njets20=0.;
+    Float_t njets10=0., njets15=0., njets20=0.,njets25=0;
     for (Int_t i=0; i<l.jet_algoPF1_n; i++) {
 	Float_t et = ((TLorentzVector*)l.jet_algoPF1_p4->At(i))->Et();
         
@@ -2604,11 +2606,67 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
 	    njets15 += 1.;
 	if (et > 20.)
 	    njets20 += 1.;
+	if (et > 25.)
+	    njets25 += 1.;
     }
 
     l.FillTree("njets10", njets10);
     l.FillTree("njets15", njets15);
     l.FillTree("njets20", njets20);
+    l.FillTree("njets25", njets25);
+
+    if(njets10>0)
+        {
+            l.FillTree("jet1pt",((TLorentzVector*)l.jet_algoPF1_p4->At(0))->Pt());
+            l.FillTree("jet1eta",((TLorentzVector*)l.jet_algoPF1_p4->At(0))->Eta());
+            l.FillTree("jet1phi",((TLorentzVector*)l.jet_algoPF1_p4->At(0))->Phi());
+            l.FillTree("jet1e",((TLorentzVector*)l.jet_algoPF1_p4->At(0))->E());
+        }
+        else{
+            l.FillTree("jet1pt",-999.);
+            l.FillTree("jet1eta",-999.);
+            l.FillTree("jet1phi",-999.);
+            l.FillTree("jet1e",-999.);
+        }
+    if(njets10>1)
+        {
+            l.FillTree("jet2pt",((TLorentzVector*)l.jet_algoPF1_p4->At(1))->Pt());
+            l.FillTree("jet2eta",((TLorentzVector*)l.jet_algoPF1_p4->At(1))->Eta());
+            l.FillTree("jet2phi",((TLorentzVector*)l.jet_algoPF1_p4->At(1))->Phi());
+            l.FillTree("jet2e",((TLorentzVector*)l.jet_algoPF1_p4->At(1))->E());
+        }
+        else{
+            l.FillTree("jet2pt",-999.);
+            l.FillTree("jet2eta",-999.);
+            l.FillTree("jet2phi",-999.);
+            l.FillTree("jet2e",-999.);
+        }
+    if(njets10>2)
+        {
+            l.FillTree("jet3pt",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Pt());
+            l.FillTree("jet3eta",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Eta());
+            l.FillTree("jet3phi",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Phi());
+            l.FillTree("jet3e",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->E());
+        }
+        else{
+            l.FillTree("jet3pt",-999.);
+            l.FillTree("jet3eta",-999.);
+            l.FillTree("jet3phi",-999.);
+            l.FillTree("jet3e",-999.);
+        }
+    if(njets10>3)
+        {
+            l.FillTree("jet4pt",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Pt());
+            l.FillTree("jet4eta",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Eta());
+            l.FillTree("jet4phi",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Phi());
+            l.FillTree("jet4e",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->E());
+        }
+        else{
+            l.FillTree("jet4pt",-999.);
+            l.FillTree("jet4eta",-999.);
+            l.FillTree("jet4phi",-999.);
+            l.FillTree("jet4e",-999.);
+        }
 
 
     if (vbfIjet1 != -1 && vbfIjet2 !=-1) {
@@ -2846,6 +2904,9 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
     l.FillTree("dijet_MVA",         myVBF_MVA);
     l.FillTree("bdt_combined",      myVBFcombined);
 
+    l.FillTree("diffAna_iJet1", DiffAna_iJet1);
+    l.FillTree("diffAna_iJet2", DiffAna_iJet2);
+
     l.FillTree("diffAna_Njets", DiffAna_Njets);
     l.FillTree("diffAna_LeadJetpT", DiffAna_LeadJetpT);
     l.FillTree("diffAna_dRapidityHiggsJet", DiffAna_dRapidityHiggsJet);
@@ -2892,6 +2953,160 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
         l.FillTree("dipho_mva_cat", (float)category);
         if (diphobdt_output>=bdtCategoryBoundaries.back()) computeExclusiveCategory(l,category,diphoton_index,Higgs.Pt(),Higgs.M(),diphobdt_output); 
     }
+    //compute gen observables -- only sig
+	int cur_type = l.itype[l.current];
+    if(cur_type<0){ //GEN -- for the moment some cut are hard written
+        int is_bkg=0;
+	    map<float,int,std::greater<float> > phoHiggs;
+
+	    for(int igp=0;igp< l.gp_n ;igp++)
+	    {
+	    	if ( l.gp_status[igp] != 1) continue;
+	    	if ( l.gp_pdgid[igp] != 22 ) continue;
+	    	//find a 25 in the full mother chain
+	    	bool isHiggsSon=false;
+	    	for( int mother=l.gp_mother[igp]; mother>=0 && mother != l.gp_mother[mother]  ;mother=l.gp_mother[mother])
+	    	{
+	    		if (l.gp_pdgid[mother] == 25) isHiggsSon=true;
+	    	}
+	    	if( !isHiggsSon) continue;
+	    	phoHiggs[ ((TLorentzVector*)l.gp_p4->At(igp))->Pt() ]=igp;
+	    }
+	    if( phoHiggs.size()<2) is_bkg = 1; // higgs photons does not exist
+
+        if ( !is_bkg) {
+	        map<float,int,std::greater<float> >::iterator iPho=phoHiggs.begin();
+	        int pho1=iPho->second;
+	        iPho++;
+	        int pho2=iPho->second;
+	        TLorentzVector g1=*((TLorentzVector*)l.gp_p4->At(pho1));
+	        TLorentzVector g2=*((TLorentzVector*)l.gp_p4->At(pho2));
+	        TLorentzVector Hgg = g1+g2;
+	        if( g1.Pt()/Hgg.M() < 1./3. ) is_bkg=2;
+	        if( fabs(g1.Eta()) > 2.5 ) is_bkg = 3;
+	        if( g2.Pt()/Hgg.M() < 1./4.) is_bkg=4;
+	        if( fabs(g2.Eta()) > 2.5 ) is_bkg=6;
+
+	    //compute isolation for photons
+	         float pho1Iso=0,pho2Iso=0;
+	        for(int igp=0;igp< l.gp_n ;igp++)
+              {
+	          if ( l.gp_status[igp] != 1) continue;
+	          if ( l.gp_pdgid[igp] == 12 || l.gp_pdgid[igp]==14 || l.gp_pdgid[igp]==16) continue; //neutrinos
+	          if ( g1.DeltaR( *((TLorentzVector*)(l.gp_p4->At(igp))) ) < 0.4 && pho1 !=igp ) pho1Iso += ((TLorentzVector*)(l.gp_p4->At(igp)))->Pt();
+	          if ( g2.DeltaR( *((TLorentzVector*)(l.gp_p4->At(igp))) ) < 0.4 && pho2 !=igp ) pho1Iso += ((TLorentzVector*)(l.gp_p4->At(igp)))->Pt();
+              }
+//th    ey are matched to the higgs, so I don't need to consider more photons if not pass the preselection
+
+	       // if(pho1Iso >= PhoIsoDiffAnalysis || pho2Iso >= PhoIsoDiffAnalysis) is_bkg=7;
+	        float Ht=0;
+	        int nJets=0;
+	        map<float,int,std::greater<float> > jets;
+
+            float JetPtForDiffAnalysis=25.;
+            float JetPhoDRDiffAnalysis=0.5;
+
+    	    for(int iJet=0 ;iJet<l.genjet_algo1_n;iJet++)
+    	    {
+    	    	if (  fabs(((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Eta() )> JetEtaForDiffAnalysis ) continue;
+    	    	if ( ((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->DeltaR(g1) < JetPhoDRDiffAnalysis  ) continue;
+    	    	if ( ((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->DeltaR(g2) < JetPhoDRDiffAnalysis  ) continue;
+                
+
+                //don't ask for pt of jets to save informations, but care only for njets and Ht
+    	    	float pt=((TLorentzVector*)l.genjet_algo1_p4->At(iJet))->Pt();
+    	    	jets[ pt ] = iJet;
+    	    	if (  ((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Pt() < JetPtForDiffAnalysis ) continue;
+    	    	//DR Cut wrt photons
+    	    
+    	    	//GEN JET is good
+    	    	Ht+=pt;
+    	    	nJets+=1;
+    	    }
+
+        //Fill Opt tree
+        l.FillTree("mH_GEN", (float)Hgg.M());
+        l.FillTree("pTH_GEN", (float)Hgg.Pt());
+        l.FillTree("pho1pt_GEN", (float)g1.Pt());
+        l.FillTree("pho2pt_GEN", (float)g2.Pt());
+        l.FillTree("etaH_GEN", (float)Hgg.Eta());
+        l.FillTree("phiH_GEN", (float)Hgg.Phi());
+        l.FillTree("pho1eta_GEN", (float)g1.Eta());
+        l.FillTree("pho2eta_GEN", (float)g2.Eta());
+        l.FillTree("pho1phi_GEN", (float)g1.Phi());
+        l.FillTree("pho2phi_GEN", (float)g2.Phi());
+        l.FillTree("pho1iso_GEN", (float)pho1Iso);
+        l.FillTree("pho2iso_GEN", (float)pho2Iso);
+        l.FillTree("nJets_GEN", (float)nJets);
+        l.FillTree("Ht_GEN", (float)Ht);
+        map<float,int>::const_iterator jet_it=jets.begin();
+        if(jets.size() >0 )
+            {
+            int iJet=jet_it->second;
+            l.FillTree("jet1pt_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Pt());
+            l.FillTree("jet1eta_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Eta());
+            l.FillTree("jet1phi_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Phi());
+            }
+            else{
+            l.FillTree("jet1pt_GEN",(float) -999.);
+            l.FillTree("jet1eta_GEN",(float)-999.);
+            l.FillTree("jet1phi_GEN",(float)-999.);
+            }
+        if(jets.size() >1 )
+            {
+            jet_it++;
+            int iJet=jet_it->second;
+            l.FillTree("jet2pt_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Pt());
+            l.FillTree("jet2eta_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Eta());
+            l.FillTree("jet2phi_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Phi());
+            }
+            else{
+            l.FillTree("jet2pt_GEN",(float) -999.);
+            l.FillTree("jet2eta_GEN",(float)-999.);
+            l.FillTree("jet2phi_GEN",(float)-999.);
+            }
+        if(jets.size() >2 )
+            {
+            jet_it++;
+            int iJet=jet_it->second;
+            l.FillTree("jet3pt_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Pt());
+            l.FillTree("jet3eta_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Eta());
+            l.FillTree("jet3phi_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Phi());
+            }
+            else{
+            l.FillTree("jet3pt_GEN",(float) -999.);
+            l.FillTree("jet3eta_GEN",(float)-999.);
+            l.FillTree("jet3phi_GEN",(float)-999.);
+            }
+        } //is bkg no two photons
+        else{
+            l.FillTree("mH_GEN",-999.);
+            l.FillTree("pTH_GEN",-999.);
+            l.FillTree("pho1pt_GEN",-999.);
+            l.FillTree("pho2pt_GEN",-999.);
+            l.FillTree("etaH_GEN",-999.);
+            l.FillTree("pho1eta_GEN",-999.);
+            l.FillTree("pho2eta_GEN",-999.);
+            l.FillTree("phiH_GEN",-999.);
+            l.FillTree("pho1phi_GEN",-999.);
+            l.FillTree("pho2phi_GEN",-999.);
+            l.FillTree("pho1iso_GEN",999.); //>0
+            l.FillTree("pho2iso_GEN",999.);
+            l.FillTree("nJets_GEN",-999.);
+            l.FillTree("Ht_GEN",-999.);
+            l.FillTree("jet1pt_GEN",(float) -999.);
+            l.FillTree("jet1eta_GEN",(float)-999.);
+            l.FillTree("jet1phi_GEN",(float)-999.);
+            l.FillTree("jet2pt_GEN",(float) -999.);
+            l.FillTree("jet2eta_GEN",(float)-999.);
+            l.FillTree("jet2phi_GEN",(float)-999.);
+            l.FillTree("jet3pt_GEN",(float) -999.);
+            l.FillTree("jet3eta_GEN",(float)-999.);
+            l.FillTree("jet3phi_GEN",(float)-999.);
+            //fill with -999
+        }
+    l.FillTree("is_bkg_GEN",(float)is_bkg);
+    } //END GEN
 };
 
 
