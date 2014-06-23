@@ -251,7 +251,6 @@ def DrawNLL(dir="jobs",nBins=6,File="UnfoldScanExp"):
 	C.SaveAs("plots_nll"+extraString+"_"+dir.replace("/","")+".root")
 	C.SaveAs("plots_nll"+extraString+"_"+dir.replace("/","")+".png")
 
-
 def GetXsecSplines():
 	#load LoopAll -> Normalization
 	(mypath,globe_name)=findPath()
