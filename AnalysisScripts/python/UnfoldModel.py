@@ -10,6 +10,10 @@ class UnfoldModel( PhysicsModel ):
 		self.nBin=4
 		self.mHRange=[]
 		self.debug=1
+		self.mass=0
+		#regularization is in the datacard
+		#self.deltaReg=0
+		#self.regBins=""
 
 	def setPhysicsOptions(self,physOptions):
 		if self.debug>0:print "Setting PhysicsModel Options"
@@ -30,6 +34,9 @@ class UnfoldModel( PhysicsModel ):
 					raise RuntimeError, "Higgs mass range definition requires two extrema"
 				elif float(self.mHRange[0]) >= float(self.mHRange[1]):
 					raise RuntimeError, "Extrema for Higgs mass range defined with inverterd order. Second must be larger the first"
+			if po.startswith("mass="):
+				self.mass=float( po.replace('mass=','') )
+
 			#verbose
 			if po.startswith("verbose"):
 				self.debug = 1
@@ -63,17 +70,17 @@ class UnfoldModel( PhysicsModel ):
 		        self.modelBuilder.out.var("MH").setConstant(False)
 		        poiNames += [ 'MH' ]
 		    else:
-		        print 'MH will be assumed to be', self.options.mass
+		        print 'MH will be assumed to be', self.mass
 		        self.modelBuilder.out.var("MH").removeRange()
-		        self.modelBuilder.out.var("MH").setVal(self.options.mass)
+		        self.modelBuilder.out.var("MH").setVal(self.mass)
 		else:
 		    if len(self.mHRange) == 2:
 		        print 'MH will be left floating within', self.mHRange[0], 'and', self.mHRange[1]
 		        self.modelBuilder.doVar("MH[%s,%s]" % (self.mHRange[0],self.mHRange[1]))
 		        poiNames += [ 'MH' ]
 		    else:
-		        print 'MH (not there before) will be assumed to be', self.options.mass
-		        self.modelBuilder.doVar("MH[%g]" % self.options.mass)
+		        print 'MH (not there before) will be assumed to be', self.mass
+		        self.modelBuilder.doVar("MH[%g]" % self.mass)
 		for poi in poiNames:
 			POIs += ",%s"%poi
 		self.modelBuilder.doSet("POI",POIs)

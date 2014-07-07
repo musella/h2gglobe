@@ -496,7 +496,7 @@ def writeMultiDimFit(method=None,wsOnly=False):
         if opts.profileMH:
             profMH = "--PO higgsMassRange=122,128"
         else:
-            profMH = ""
+            profMH = "--PO mass=%f"%opts.mh
         catsMap = opts.catsMap
 	if not method:
             method = opts.method            
@@ -575,10 +575,10 @@ def writeMultiDimFit(method=None,wsOnly=False):
 		"MuMHScan"	: "-P r -P MH",
 		"RProcScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix), # need to add option to run specific process
 		"RTopoScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix), # need to add option to run specific topologic categories
-		"RBinScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix), # need to add option to run specific topologic categories
-		"RDiffXsScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix), # 
-		"RBinScanStat"	: "--floatOtherPOIs=1 -P %s"%(opts.poix), # need to add option to run specific topologic categories
-		"RDiffXsScanStat": "--floatOtherPOIs=1 -P %s"%(opts.poix), # 
+		"RBinScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix)if 'floatOtherPOIs' not in opts.additionalOptions else " -P %s"%(opts.poix) , # need to add option to run specific topologic categories
+		"RDiffXsScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix) if 'floatOtherPOIs' not in opts.additionalOptions else " -P %s"%(opts.poix) ,
+		"RBinScanStat"	: "--floatOtherPOIs=1 -P %s"%(opts.poix)if 'floatOtherPOIs' not in opts.additionalOptions else " -P %s"%(opts.poix) , # need to add option to run specific topologic categories
+		"RDiffXsScanStat": "--floatOtherPOIs=1 -P %s"%(opts.poix) if 'floatOtherPOIs' not in opts.additionalOptions else " -P %s"%(opts.poix), # 
 		}
 	par_ranges = {}
 	if opts.rvLow!=None and opts.rvHigh!=None and opts.rfLow!=None and opts.rfHigh!=None:
@@ -787,6 +787,7 @@ def configure(config_line):
                 if option.startswith('freezeAll='): opts.freezeAll = int(option.split('=')[1])
                 if option.startswith('float='): opts.float = str(option.split('=')[1])
 		if option.startswith('var='):opts.var=option.split('=')[1]
+		if option.startswith('profileMH='):opts.profileMH=int(option.split('=')[1])
 		if option.startswith('opts='): 
 			addoptstr = option.split("=")[1:]
 			addoptstr = "=".join(addoptstr)
@@ -847,6 +848,9 @@ elif opts.datfile:
 		if line.startswith('files'):
 			opts.files = line.split('=')[1]
                         defaults.files = opts.files
+			continue
+		if line.startswith('comment'):
+			print "\033[31;1m",line.split('=')[1],"\033[0m"
 			continue
 		configure(line)
 
