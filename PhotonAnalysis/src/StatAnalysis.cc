@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <stdio.h>
+#include "JetAnalysis/interface/JetHandler.h"
 
 #define PADEBUG 0
 
@@ -58,6 +59,11 @@ StatAnalysis::StatAnalysis()  :
     doCosThetaDependentInterferenceSmear=false;
     doPdfWeightSmear=false;
     doPdfWeightSyst=false;
+    
+    jecSmearer = 0;
+    jerSmearer = 0;
+    doJecSyst = false;
+    doJerSyst = false;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -373,7 +379,34 @@ void StatAnalysis::Init(LoopAll& l)
         l.rooContainer->MakeSystematicStudy(sys,sys_t);
     }
 
-    // ----------------------------------------------------
+    // Jet-related systematics
+    if( doJecSyst ) {
+	if( ! jetHandler_ ) {
+	    jetHandler_ = new JetHandler(jetHandlerCfg, l);
+	}
+	
+	jecSmearer = new JetEnergySmearer(&l, jetHandler_, true);
+	jecSmearer->jerOrJec(true);
+	jecSmearer->name("JEC");
+
+	photonSmearers_.push_back(jecSmearer);
+	systPhotonSmearers_.push_back(jecSmearer);
+        std::vector<std::string> sys(1,jecSmearer->name());
+        std::vector<int> sys_t(1,-1);   // -1 for signal, 1 for background 0 for both
+        l.rooContainer->MakeSystematicStudy(sys,sys_t);
+    }
+    if( doJerSyst ) {
+	assert( doJecSyst );
+	jecSmearer = new JetEnergySmearer(&l, jetHandler_, false);
+	jecSmearer->jerOrJec(false);
+
+	photonSmearers_.push_back(jerSmearer);
+	systPhotonSmearers_.push_back(jerSmearer);
+        std::vector<std::string> sys(1,jerSmearer->name());
+        std::vector<int> sys_t(1,-1);   // -1 for signal, 1 for background 0 for both
+        l.rooContainer->MakeSystematicStudy(sys,sys_t);
+    }
+
     // ----------------------------------------------------
     // Global systematics - Lumi
     l.rooContainer->AddGlobalSystematic("lumi",1.045,1.00);
@@ -784,12 +817,17 @@ bool StatAnalysis::Analysis(LoopAll& l, Int_t jentry)
     }
 
     // Re-apply JEC and / or recompute JetID
-    if(includeVBF || includeVHhad || includeVHhadBtag || includeTTHhad || includeTTHlep) { postProcessJets(l); }
+    if(includeVBF || includeVHhad || includeVHhadBtag || includeTTHhad || includeTTHlep || doDifferentialAnalysis ) { postProcessJets(l); }
 
     // initialize diphoton "selectability" and BDTs for this event
     for(int id=0; id<l.dipho_n; ++id ) {
         l.dipho_sel[id]=false;
         l.dipho_BDT[id]=-10;
+    }
+
+    // Tell photon smearers it's a new event
+    for(std::vector<BaseSmearer *>::iterator  si=systPhotonSmearers_.begin(); si!= systPhotonSmearers_.end(); ++si ) {
+	(*si)->newEvent(&l);
     }
     
     // Analyse the event assuming nominal values of corrections and smearings

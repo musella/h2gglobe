@@ -36,6 +36,8 @@ public:
 	bool amRegistered() const  { return smearerId_ > -1; };
 
 	static int nRegisteredSmerers() { return nRegisteredSmerers_; };
+
+	virtual void newEvent(LoopAll * l) { return; };
 	
 protected:
 	static int nRegisteredSmerers_;

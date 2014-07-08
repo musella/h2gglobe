@@ -4,6 +4,7 @@
 #include "PhotonReducedInfo.h"
 #include <iostream>
 #include <algorithm>
+#include "JetAnalysis/interface/JetHandler.h"
 
 #define PADEBUG 0
 
@@ -414,6 +415,35 @@ void MassFactorizedMvaAnalysis::Init(LoopAll& l)
           l.rooContainer->MakeSystematicStudy(sys,sys_t);
         }
 
+    }
+
+    
+    // Jet-related systematics
+    if( doJecSyst ) {
+	if( ! jetHandler_ ) {
+	    jetHandler_ = new JetHandler(jetHandlerCfg, l);
+	}
+	
+	jecSmearer = new JetEnergySmearer(&l, jetHandler_, true);
+	jecSmearer->jerOrJec(true);
+	jecSmearer->name("JEC");
+
+	photonSmearers_.push_back(jecSmearer);
+	systPhotonSmearers_.push_back(jecSmearer);
+        std::vector<std::string> sys(1,jecSmearer->name());
+        std::vector<int> sys_t(1,-1);   // -1 for signal, 1 for background 0 for both
+        l.rooContainer->MakeSystematicStudy(sys,sys_t);
+    }
+    if( doJerSyst ) {
+	assert( doJecSyst );
+	jecSmearer = new JetEnergySmearer(&l, jetHandler_, false);
+	jecSmearer->jerOrJec(false);
+
+	photonSmearers_.push_back(jerSmearer);
+	systPhotonSmearers_.push_back(jerSmearer);
+        std::vector<std::string> sys(1,jerSmearer->name());
+        std::vector<int> sys_t(1,-1);   // -1 for signal, 1 for background 0 for both
+        l.rooContainer->MakeSystematicStudy(sys,sys_t);
     }
 
     if( doFullMvaFinalTree ) {

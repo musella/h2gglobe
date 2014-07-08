@@ -135,6 +135,10 @@ rerunJetMva=0
 recomputeJetWp=0
 jetHandlerCfg=jetHandler_Legacy8TeV.py
 
+# JEC / JER
+doJecSyst = 1
+# doJerSyst = 0
+
 ## revertex
 reRunVtx=0
 rematchConversions=0

@@ -1423,18 +1423,18 @@ void PhotonAnalysis::Init(LoopAll& l)
     
     // Jet handling
     if( recomputeBetas || recorrectJets || rerunJetMva || recomputeJetWp || applyJer || applyJecUnc || emulateJetResponse 
-	|| l.typerun != l.kFill ) {
-	std::cout << "JetHandler: \n"
-		  << "recomputeBetas " << recomputeBetas << "\n"
-		  << "recorrectJets " << recorrectJets << "\n"
-		  << "rerunJetMva " << rerunJetMva << "\n"
-		  << "recomputeJetWp " << recomputeJetWp << "\n"
-		  << "emulateJetResponse " << emulateJetResponse
-		  << std::endl;
-	jetHandler_ = new JetHandler(jetHandlerCfg, l);
-	jetHandler_->setJetResponseStep(jetResponseLumiStep);
+        || l.typerun != l.kFill ) {
+        std::cout << "JetHandler: \n"
+                  << "recomputeBetas " << recomputeBetas << "\n"
+                  << "recorrectJets " << recorrectJets << "\n"
+                  << "rerunJetMva " << rerunJetMva << "\n"
+                  << "recomputeJetWp " << recomputeJetWp << "\n"
+                  << "emulateJetResponse " << emulateJetResponse
+                  << std::endl;
+        jetHandler_ = new JetHandler(jetHandlerCfg, l);
+        jetHandler_->setJetResponseStep(jetResponseLumiStep);
     }
-
+    
     // Beam spot reweighting
     if( emulateBeamspot || reweighBeamspot ) {
 	assert( emulatedBeamspotWidth != 0. );
