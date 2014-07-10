@@ -14,6 +14,7 @@
 #include "PtSpinSmearer.h"
 #include "PdfWeightSmearer.h"
 #include "InterferenceSmearer.h"
+#include "JetEnergySmearer.h"
 #include <iostream>
 #include <fstream>
 #include "math.h"
@@ -59,6 +60,7 @@ class StatAnalysis : public PhotonAnalysis
     bool  doEscaleSmear, doEresolSmear, doPhotonIdEffSmear, doVtxEffSmear, doR9Smear, doTriggerEffSmear, 
 	doKFactorSmear, doPtSpinSmear, doInterferenceSmear, doCosThetaDependentInterferenceSmear;
     bool doPdfWeightSmear, doPdfWeightSyst;
+    bool doJecSyst, doJerSyst;
     float systRange;
     int   nSystSteps;   
     //int   nEtaCategories, nR9Categories, nPtCategories;
@@ -168,6 +170,7 @@ class StatAnalysis : public PhotonAnalysis
     std::vector<PdfWeightSmearer*> pdfWeightSmearer_sets;
     InterferenceSmearer * interferenceSmearer;
     PtSpinSmearer * ptSpinSmearer;
+    JetEnergySmearer *jecSmearer, *jerSmearer;
     
     std::string name_;
     std::map<int,std::string> signalLabels;

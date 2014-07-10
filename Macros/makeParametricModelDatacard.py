@@ -25,6 +25,7 @@ parser.add_option("--isDiffAnalysis",help="is differential analysis nBins. (defa
 parser.add_option("--isMultiPdf",default=False,action="store_true")
 parser.add_option("--isBinnedSignal",default=False,action="store_true")
 parser.add_option("--is2011",default=False,action="store_true")
+parser.add_option("--statOnly",default=False,action="store_true")
 parser.add_option("--scaleFactors",help="Scale factor for spin model pass as e.g. gg_grav:1.351,qq_grav:1.027")
 parser.add_option("--quadInterpolate",type="int",default=0,help="Do a quadratic interpolation of globe templates back to 1 sigma from this sigma. 0 means off (default: %default)")
 (options,args)=parser.parse_args()
@@ -295,6 +296,11 @@ if options.isBinnedSignal:
 	globeSysts['E_res'] = 'n_e_res'
 if options.isSpinModel:
 	globeSysts['ptSpin'] = 'n_pt'
+
+globeSysts["JEC"] = 'JES'
+# JER systematics.
+#  Disabled for the moment.
+#globeSysts["JER"] = 'JER'
 
 # QCD scale and PDF variations on PT-Y (replaced k-Factor PT variation) 
 if not options.isBinnedSignal:
@@ -624,6 +630,7 @@ def getGlobeLine(proc,cat,name):
 def printGlobeSysts():
 	print 'Efficiencies...'
 	for globeSyst, paramSyst in globeSysts.items():
+		print globeSyst, paramSyst
 		if 'pdfWeight' and 'QCDscale' in globeSyst: # special case
 			if options.isBinnedSignal: 
 				outFile.write('%-25s   shape   '%(globeSyst))
@@ -882,215 +889,14 @@ def printMultiPdf():
 printPreamble()
 printFileOptions()
 printObsProcBinLines()
-printNuisParams()
-printTheorySysts()
-printLumiSyst()
-printTrigSyst()
-printGlobeSysts()
-if not options.isSpinModel and not doDiffAnalysis:
-	printVbfSysts()
-	printLepSysts()
-	printTTHSysts()
+if not options.statOnly:
+	printNuisParams()
+	printTheorySysts()
+	printLumiSyst()
+	printTrigSyst()
+	printGlobeSysts()
+	if not options.isSpinModel and not doDiffAnalysis:
+		printVbfSysts()
+		printLepSysts()
+		printTTHSysts()
 printMultiPdf()
-
-
-# DEFUNCT OLD FUNCTIONS........
-"""
-def printLepSystsOld():
-
-	print 'Lep...'
-	# electron efficiency
-	outFile.write('%-35s   lnN   '%('CMS_hgg_eff_e'))
-	eleEvCount={}
-	incEvCount={}
-	for p in options.procs:
-		eleEvCount[p] = 0.
-		incEvCount[p] = 0.
-		for c in range(options.ncats):
-			if '%s:%d'%(p,c) in options.toSkip: continue
-			if p in bkgProcs: continue
-			th1f = inFile.Get('th1f_sig_%s_mass_m125_cat%d'%(globeProc[p],c))
-			if c in incCats: incEvCount[p] += th1f.Integral()
-			elif c in tthLepCat or c in eleCat: eleEvCount[p] += th1f.Integral()
-			else: continue
-	#write lines
-	for c in range(options.ncats):
-		for p in options.procs:
-			if '%s:%d'%(p,c) in options.toSkip: continue
-			if p in bkgProcs:
-				outFile.write('- ')
-				continue
-			else:
-				thisUncert = eleSyst[p]
-			if c in incCats:
-				if thisUncert != 0:
-					outFile.write('%6.4f '%((incEvCount[p]-thisUncert*eleEvCount[p])/incEvCount[p]))
-				else:
-					outFile.write('- ')						
-			elif c in tthLepCat or c in eleCat:
-				if thisUncert != 0:
-					outFile.write('%6.4f '%(1.+thisUncert))
-				else:
-					outFile.write('- ')
-			else:
-				outFile.write('- ')
-	outFile.write('\n')
-
-	# muon efficiency
-	outFile.write('%-35s   lnN   '%('CMS_hgg_eff_m'))
-	muonEvCount={}
-	incEvCount={}
-	for p in options.procs:
-		muonEvCount[p] = 0.
-		incEvCount[p] = 0.
-		for c in range(options.ncats):
-			if '%s:%d'%(p,c) in options.toSkip: continue
-			if p in bkgProcs: continue
-			th1f = inFile.Get('th1f_sig_%s_mass_m125_cat%d'%(globeProc[p],c))
-			if c in incCats: incEvCount[p] += th1f.Integral()
-			elif c in tthLepCat or c in muonCat: muonEvCount[p] += th1f.Integral()
-			else: continue
-	#write lines
-	for c in range(options.ncats):
-		for p in options.procs:
-			if '%s:%d'%(p,c) in options.toSkip: continue
-			if p in bkgProcs:
-				outFile.write('- ')
-				continue
-			else:
-				thisUncert = muonSyst[p]
-			if c in incCats:
-				if thisUncert != 0:
-					outFile.write('%6.4f '%((incEvCount[p]-thisUncert*muonEvCount[p])/incEvCount[p]))
-				else:
-					outFile.write('- ')						
-			elif c in tthLepCat or c in muonCat:
-				if thisUncert != 0:
-					outFile.write('%6.4f '%(1.+thisUncert))
-				else:
-					outFile.write('- ')
-			else:
-				outFile.write('- ')
-	outFile.write('\n')
-
-def printMetSystsOld():
-	
-	#met efficiency
-	print 'Met ...'
-	outFile.write('%-35s   lnN   '%('CMS_hgg_scale_met'))
-	metEvCount={}
-	incEvCount={}
-	for p in options.procs:
-		metEvCount[p] = 0.
-		incEvCount[p] = 0.
-		for c in range(options.ncats):
-			if '%s:%d'%(p,c) in options.toSkip: continue
-			if p in bkgProcs: continue
-			th1f = inFile.Get('th1f_sig_%s_mass_m125_cat%d'%(globeProc[p],c))
-			if c in incCats: incEvCount[p] += th1f.Integral()
-			elif c in metCat: metEvCount[p] += th1f.Integral()
-			else:continue
-	#write lines
-	for c in range(options.ncats):
-		for p in options.procs:
-			if '%s:%d'%(p,c) in options.toSkip: continue
-			if p in bkgProcs:
-				outFile.write('- ')
-				continue
-			else:
-				thisUncert = metSyst[p]
-			if c in incCats:
-				if thisUncert != 0:
-					outFile.write('%6.4f '%((incEvCount[p]-thisUncert*metEvCount[p])/incEvCount[p]))
-				else:
-					outFile.write('- ')						
-			elif c in metCat:
-				if thisUncert != 0:
-					outFile.write('%6.4f '%(1.+thisUncert))
-				else:
-					outFile.write('- ')
-			else:
-				outFile.write('- ')
-	outFile.write('\n')
-        
-	#migration from the two vhlep cat due to met
-	outFile.write('%-35s   lnN   '%('CMS_hgg_met_migration'))
-	tightLepEvCount={}
-	looseLepEvCount={}
-	for p in options.procs:
-		tightLepEvCount[p]=0.
-		looseLepEvCount[p]=0.
-		
-		for c in range(options.ncats):
-			if '%s:%d'%(p,c) in options.toSkip: continue
-			if p in bkgProcs: continue
-			if c in tightLepCat or c in looseLepCat:
-				th1f = inFile.Get('th1f_sig_%s_mass_m125_cat%d'%(globeProc[p],c))
-				if c in tightLepCat:
-					tightLepEvCount[p] += th1f.Integral()
-				else:
-					looseLepEvCount[p] += th1f.Integral()
-	# write lines
-	for c in range(options.ncats):
-		for p in options.procs:
-			if '%s:%d'%(p,c) in options.toSkip: continue
-			if p in bkgProcs:
-				outFile.write('- ')
-				continue
-			else:
-				thisUncert = metSyst[p]
-			if c in tightLepCat or c in looseLepCat:
-				if c in tightLepCat:
-					outFile.write('%6.4f '%(1.+thisUncert))
-				elif c in eleCat:
-					if looseLepEvCount[p]==0:
-						outFile.write('1.000 ')
-					else:
-						outFile.write('%6.4f '%((looseLepEvCount[p]-thisUncert*tightLepEvCount[p])/looseLepEvCount[p]))
-			else:
-				outFile.write('- ')
-	outFile.write('\n')
-
-def printTTHSystsOld():
-	print 'TTH...'
-	for tthSystName, tthSystVals in tthSysts.items():
-		outFile.write('%-35s   lnN   '%tthSystName)
-		tthEvCount={}
-		incEvCount={}
-		for p in options.procs:
-			tthEvCount[p] = 0.
-			incEvCount[p] = 0.
-			for c in range(options.ncats):
-				if '%s:%d'%(p,c) in options.toSkip: continue
-				if p in bkgProcs: continue
-				th1f = inFile.Get('th1f_sig_%s_mass_m125_cat%d'%(globeProc[p],c))
-				if c in incCats: incEvCount[p] += th1f.Integral()
-				elif c in tthCats: tthEvCount[p] += th1f.Integral()
-				else:continue
-		#write lines
-		for c in range(options.ncats):
-			for p in options.procs:
-				if '%s:%d'%(p,c) in options.toSkip: continue
-				if p in bkgProcs:
-					outFile.write('- ')
-					continue
-				elif p=='ttH': 
-					thisUncert = tthSystVals[1]
-				elif p=='qqH':
-					thisUncert = 0
-				else:
-					thisUncert = tthSystVals[0]
-				if c in incCats:
-					if thisUncert != 0:
-						outFile.write('%6.4f '%((incEvCount[p]-thisUncert*tthEvCount[p])/incEvCount[p]))
-					else:
-						outFile.write('- ')						
-				elif c in tthCats:
-					if thisUncert != 0:
-						outFile.write('%6.4f '%(1.+thisUncert))
-					else:
-						outFile.write('- ')
-				else:
-					outFile.write('- ')
-		outFile.write('\n')
-"""
