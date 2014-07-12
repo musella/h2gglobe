@@ -84,6 +84,7 @@ class StatAnalysis : public PhotonAnalysis
     double JetPtForDiffAnalysis;
     double JetEtaForDiffAnalysis;
     double varValue;
+    float DiffAna_iJet1,DiffAna_iJet2; 
     double DiffAna_Njets, DiffAna_LeadJetpT, DiffAna_dRapidityHiggsJet, DiffAna_Mjj, DiffAna_dEtajj, DiffAna_Zepp, DiffAna_dPhijj, DiffAna_dPhiggjj;
 
     bool splitwzh;
