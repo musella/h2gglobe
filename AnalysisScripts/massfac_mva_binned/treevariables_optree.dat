@@ -181,6 +181,8 @@ type=2 name=njets10
 type=2 name=njets15
 type=2 name=njets20
 
+type=2 name=diffAna_iJet1
+type=2 name=diffAna_iJet2
 type=2 name=diffAna_Njets
 type=2 name=diffAna_LeadJetpT
 type=2 name=diffAna_Mjj
@@ -190,3 +192,56 @@ type=2 name=diffAna_dPhijj
 type=2 name=diffAna_dPhiggjj
 
 type=2 name=bdt_combined
+
+## JETS
+type=2 name=njets25
+
+#jet1
+type=2 name=jet1pt
+type=2 name=jet1eta
+type=2 name=jet1phi
+type=2 name=jet1e
+
+#jet2
+type=2 name=jet2pt
+type=2 name=jet2eta
+type=2 name=jet2phi
+type=2 name=jet2e
+
+#jet3
+type=2 name=jet3pt
+type=2 name=jet3eta
+type=2 name=jet3phi
+type=2 name=jet3e
+
+#jet4
+type=2 name=jet4pt
+type=2 name=jet4eta
+type=2 name=jet4phi
+type=2 name=jet4e
+
+############## GEN #####################
+type=2 name=mH_GEN
+type=2 name=pTH_GEN
+type=2 name=pho1pt_GEN
+type=2 name=pho2pt_GEN
+type=2 name=etaH_GEN
+type=2 name=pho1eta_GEN
+type=2 name=pho2eta_GEN
+type=2 name=phiH_GEN
+type=2 name=pho1phi_GEN
+type=2 name=pho2phi_GEN
+type=2 name=pho1iso_GEN
+type=2 name=pho2iso_GEN
+type=2 name=nJets_GEN
+type=2 name=Ht_GEN
+type=2 name=jet1pt_GEN
+type=2 name=jet1eta_GEN
+type=2 name=jet1phi_GEN
+type=2 name=jet2pt_GEN
+type=2 name=jet2eta_GEN
+type=2 name=jet2phi_GEN
+type=2 name=jet3pt_GEN
+type=2 name=jet3eta_GEN
+type=2 name=jet3phi_GEN
+type=2 name=is_bkg_GEN

@@ -2217,7 +2217,7 @@ void StatAnalysis::computeDifferentialVariableCategory(LoopAll &l, int &category
     for (int scat=0; scat<nVarCategories; scat++){
         if (varValue>=varCatBoundaries[scat] && varValue<varCatBoundaries[scat+1]) varCategory=scat;
     }
-    if (varValue==-99 && doOutOfJetAcceptance) varCategory = nVarCategories;
+    if ( long(varValue)==long(-99) && doOutOfJetAcceptance) varCategory = nVarCategories;
 
     if (PADEBUG) {
 	cout << "varValue="<<varValue<<" category="<<category <<" varCategory="<<varCategory<<" (category*nVarCategories)+varCategory="<<(category*nVarCategories)+varCategory<<endl;

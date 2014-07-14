@@ -214,6 +214,7 @@ void UnfoldAnalysis::FillRooContainerSyst(LoopAll& l, const std::string &name, i
 int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 
 	int is_bkg=-1;
+	int is_jet_ooa=-2;
 	ig1=-1;ig2=-1;
 
 //effGenCut["TOT"]+=1; //DEBUG
@@ -354,7 +355,10 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 		if (nJets>0)
 			var = ((TLorentzVector*)l.genjet_algo1_p4->At(jets.begin()->second))->Pt();
 		else 
-			var = -1;
+			{
+			var = is_jet_ooa;
+			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
+			}
 	}
 	else if (VarDef == "dPhijj")
 	{
@@ -366,7 +370,10 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 			var= fabs(j1.DeltaPhi(j2));
 		}
 		else
-			var=-1;
+			{
+			var = is_jet_ooa;
+			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
+			}
 	}
 	else if (VarDef == "Mjj")
 	{
@@ -378,7 +385,10 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 			var= (j1+j2).M(); 
 		}
 		else
-			var=-1;
+			{
+			var = is_jet_ooa;
+			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
+			}
 	}
 	else if ( VarDef == "dPhiggjj")
 	{
@@ -390,7 +400,10 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 			var=  fabs(Hgg.DeltaPhi(j1+j2));
 		}
 		else
-			var=-1;
+			{
+			var = is_jet_ooa;
+			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
+			}
 	}
 	else if ( VarDef == "Zepp" )
 	{
@@ -401,7 +414,10 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 			var=fabs(Hgg.Eta() - 0.5*(j1.Eta() + j2.Eta()));
 		}
 		else
-			var = -1;
+			{
+			var = is_jet_ooa;
+			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
+			}
 	}
 	else if ( VarDef == "dEtajj")
 	{
@@ -412,7 +428,10 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 			var=fabs(j1.Eta() - j2.Eta());
 		}
 		else
-			var = -1;
+			{
+			var = is_jet_ooa;
+			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
+			}
 	}
 	else if (VarDef == "dRapidityHiggsJet")
 	{
@@ -422,7 +441,10 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 			var=fabs(Hgg.Rapidity() -j1.Rapidity()); 
 		}
 		else
-			var = -1;		
+			{
+			var = is_jet_ooa;
+			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
+			}
 		
 	}
 	else assert( 0  ); //variable not found
@@ -434,7 +456,10 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 	for(int iBin=0;iBin<nVarCategories;iBin++)
 		if( varCatBoundaries[iBin] <= var && var< varCatBoundaries[iBin+1] ) bin=iBin;	
 
-	if (var == -1) bin = -2; //out of jet acceptance
+	if (int(var) == is_jet_ooa) {
+		bin = is_jet_ooa; //out of jet acceptance
+		assert(0); //already implemented the return
+		}
 
 //if(bin>=0)effGenCut["Full"]+=1; //DEBUG
 	if(bin>=0) 

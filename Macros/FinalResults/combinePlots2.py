@@ -73,10 +73,14 @@ else:
 
 
 ## Draw Canvas nll##
-DrawNLL(dir_,nBins_)
-DrawNLL(dir_,nBins_,"RecoScanExp")
-DrawNLL(dir_,nBins_,"RecoScanStatExp")
-DrawNLL(dir_,nBins_,"UnfoldScanStatExp")
+try:	DrawNLL(dir_,nBins_)
+except ReferenceError: pass ## no file
+try:	DrawNLL(dir_,nBins_,"RecoScanExp")
+except ReferenceError: pass ## no file
+try:	DrawNLL(dir_,nBins_,"RecoScanStatExp")
+except ReferenceError: pass ## no file
+try:	DrawNLL(dir_,nBins_,"UnfoldScanStatExp")
+except ReferenceError: pass ## no file
 
 ### Get The Histograms  and normalize to the total xSec
 
@@ -140,10 +144,14 @@ f.Close()
 
 C3=ROOT.TCanvas("c3","c3",800,800)
 
-MuU=getMu(nBins_,dir_,"UnfoldScanExp",1)[0]
-MuUS=getMu(nBins_,dir_,"UnfoldScanStatExp",1)[0]
-MuR=getMu(nBins_,dir_,"RecoScanExp",1)[0]
-MuRS=getMu(nBins_,dir_,"RecoScanStatExp",1)[0]
+try: 	MuU=getMu(nBins_,dir_,"UnfoldScanExp",1)[0]
+except: MuU=None
+try:	MuUS=getMu(nBins_,dir_,"UnfoldScanStatExp",1)[0]
+except: MuUS=None
+try:	MuR=getMu(nBins_,dir_,"RecoScanExp",1)[0]
+except: MuR=None
+try:	MuRS=getMu(nBins_,dir_,"RecoScanStatExp",1)[0]
+except: MuRS=None
 
 
 h=ROOT.TH2D("axis","axis",nBins_,0,nBins_,100,-1,3)
@@ -161,17 +169,18 @@ h_MuRS.SetName("muRS")
 xerr=0.1
 for iBin in range(0,nBins_):
 	h.GetXaxis().SetBinLabel(iBin+1,"Bin%d"%iBin)
-	h_MuU.SetPoint(iBin,iBin+0.35, MuU[iBin][0])
-	h_MuU.SetPointError(iBin,xerr,xerr ,MuU[iBin][0]- MuU[iBin][1]  ,MuU[iBin][2] - MuU[iBin][0])
-
-	h_MuUS.SetPoint(iBin,iBin+0.35, MuUS[iBin][0])
-	h_MuUS.SetPointError(iBin,xerr*.9,xerr*.9 ,MuUS[iBin][0]- MuUS[iBin][1], MuUS[iBin][2] - MuUS[iBin][0])
-
-	h_MuR.SetPoint(iBin,iBin+0.65, MuR[iBin][0])
-	h_MuR.SetPointError(iBin,xerr, xerr,MuR[iBin][0]- MuR[iBin][1]  , MuR[iBin][2] - MuR[iBin][0])
-
-	h_MuRS.SetPoint(iBin,iBin+0.65, MuRS[iBin][0])
-	h_MuRS.SetPointError(iBin,xerr*.9, xerr *.9,MuRS[iBin][0]- MuRS[iBin][1], MuRS[iBin][2] - MuRS[iBin][0])
+	if MuU:
+		h_MuU.SetPoint(iBin,iBin+0.35, MuU[iBin][0])
+		h_MuU.SetPointError(iBin,xerr,xerr ,MuU[iBin][0]- MuU[iBin][1]  ,MuU[iBin][2] - MuU[iBin][0])
+	if MuUS:
+		h_MuUS.SetPoint(iBin,iBin+0.35, MuUS[iBin][0])
+		h_MuUS.SetPointError(iBin,xerr*.9,xerr*.9 ,MuUS[iBin][0]- MuUS[iBin][1], MuUS[iBin][2] - MuUS[iBin][0])
+	if MuR:
+		h_MuR.SetPoint(iBin,iBin+0.65, MuR[iBin][0])
+		h_MuR.SetPointError(iBin,xerr, xerr,MuR[iBin][0]- MuR[iBin][1]  , MuR[iBin][2] - MuR[iBin][0])
+	if MuRS:
+		h_MuRS.SetPoint(iBin,iBin+0.65, MuRS[iBin][0])
+		h_MuRS.SetPointError(iBin,xerr*.9, xerr *.9,MuRS[iBin][0]- MuRS[iBin][1], MuRS[iBin][2] - MuRS[iBin][0])
 
 MuFile =open("Mu_"+dir_.replace("/","")+".txt","w")
 
@@ -181,7 +190,8 @@ print >>MuFile,"\\begin{tabular}{|c|c|c|c|}"
 print >>MuFile,"\\hline"
 print >>MuFile,"\\textbf{Bin Number} & \\textbf{$\\mu$} & \\textbf{Negative error} & \\textbf{positive error} \\\\"
 print >>MuFile,"\\hline"
-for iBin in range(0,nBins_):
+if MuU:
+   for iBin in range(0,nBins_):
 	print "Mu Bin%d"%iBin,MuU[iBin][0], "+-", MuU[iBin][1],MuU[iBin][2]
 	print>>MuFile, "Bin%d"%iBin,"& $",MuU[iBin][0], "$ & $", MuU[iBin][0]-MuU[iBin][1],"$ & $",MuU[iBin][2] - MuU[iBin][0],"$ \\\\"
 print >>MuFile,"\\hline"
@@ -197,7 +207,8 @@ print >>MuFile,"%%\\begin{tabular}{|c|c|c|c|}"
 print >>MuFile,"%%\\hline"
 print >>MuFile,"%%\\textbf{Bin Number} & \\textbf{$\\mu$} & \\textbf{Negative error} & \\textbf{positive error} \\\\"
 print >>MuFile,"%%\\hline"
-for iBin in range(0,nBins_):
+if MuUS:
+   for iBin in range(0,nBins_):
 	print>>MuFile, "%%%%Bin%d"%iBin,"& $",MuUS[iBin][0], "$ & $", MuUS[iBin][0]-MuUS[iBin][1],"$ & $",MuUS[iBin][2] - MuUS[iBin][0],"$ \\\\"
 print >>MuFile,"%%\\hline"
 print >>MuFile,"%%\\end{tabular}"
