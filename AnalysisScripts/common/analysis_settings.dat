@@ -48,7 +48,7 @@ drSC_muon=0.5
 drGsf_lep=1.
 doApplyEleVeto=0 
 
-	
+
 ## Hadronic V tag
 includeVHhad=1
 nVHhadEtaCategories=1
@@ -136,8 +136,8 @@ recomputeJetWp=0
 jetHandlerCfg=jetHandler_Legacy8TeV.py
 
 # JEC / JER
-doJecSyst = 1
-# doJerSyst = 0
+doJecSyst=1
+# doJerSyst=0
 
 ## revertex
 reRunVtx=0
