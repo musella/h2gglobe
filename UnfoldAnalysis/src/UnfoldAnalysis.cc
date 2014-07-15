@@ -48,9 +48,9 @@ void UnfoldAnalysis::bookSignalModel(LoopAll& l, Int_t nDataBins)
 	UnfoldBaseClass::bookSignalModel(l,nDataBins);
 
 	//check if you have a simple map between bins and categories
-	if( nCategories_%nVarCategories )
+	if( nCategories_% (nVarCategories+extraBinOutOfJetAcc) )
 	{
-		cout<<"nCategories %% nVarCategories !=0 ["<<nCategories_<<","<<nVarCategories<<"]"<<endl;
+		cout<<"nCategories %% (nVarCategories+extraBinOutOFJetAcc) !=0 ["<<nCategories_<<","<<nVarCategories<<","<<extraBinOutOfJetAcc<<"]"<<endl;
 		cout<<"      *** mapping not supported ***"<<endl;
 		assert (0);
 	}
