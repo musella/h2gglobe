@@ -7,8 +7,8 @@ PhoEtaDiffAnalysis=2.5
 
 #inf=10TeV
 #PhoIsoDiffAnalysis=10000.
-PhoIsoDiffAnalysis=10000.
-PhoIsoDRDiffAnalysis=0.3 
+PhoIsoDiffAnalysis=5.
+PhoIsoDRDiffAnalysis=0.4
 
 JetPhoDRDiffAnalysis=0.5
 JetEtaForDiffAnalysis=2.5
