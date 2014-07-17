@@ -182,7 +182,7 @@ void UnfoldAnalysis::FillRooContainer(LoopAll& l, int cur_type, float mass, floa
 		  if (doProcessSplitting) l.rooContainer->InputDataPoint(Form("sig_Bin%d_",bin)+GetSignalLabel(cur_type, l)+"_rv",category, mass ,weight);
 		}
 		else {
-		  l.rooContainer->InputDataPoint(Form("sig_Bin%d_mass)m%.0f_wv",bin,l.normalizer()->GetMass(cur_type) ),category, mass ,weight);
+		  l.rooContainer->InputDataPoint(Form("sig_Bin%d_mass_m%.0f_wv",bin,l.normalizer()->GetMass(cur_type) ),category, mass ,weight);
 		  if (doProcessSplitting) l.rooContainer->InputDataPoint(Form("sig_Bin%d_",bin)+GetSignalLabel(cur_type, l)+"_wv",category, mass ,weight);
 		}
 	}//end doUnfoldHisto
