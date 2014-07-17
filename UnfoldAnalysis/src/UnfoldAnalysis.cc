@@ -206,7 +206,7 @@ void UnfoldAnalysis::FillRooContainerSyst(LoopAll& l, const std::string &name, i
 		}
 		int sig=l.normalizer()->GetMass(cur_type) ;
 		l.rooContainer->InputSystematicSet( Form("sig_Bin%d_mass_m%d",bin,sig),name,categories,mass_errors,weights);
-		l.rooContainer->InputSystematicSet( Form("sig_Bin%d_",bin)+GetSignalLabel(cur_type, l),name,categories,mass_errors,weights);
+		if( doProcessSplitting) l.rooContainer->InputSystematicSet( Form("sig_Bin%d_",bin)+GetSignalLabel(cur_type, l),name,categories,mass_errors,weights);
 		
 	}
 }
