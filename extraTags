@@ -55,7 +55,9 @@ cd $CMSSW_BASE/src
 get_git V00-02-10 https://github.com/h2gglobe/External.git CMGTools/External 
 
 ## Combine
-get_git f5cf561  https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
+#get_git f5cf561  https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
+# for some reason the previous tag make the analyzer crash for a double free 
+get_git 20cea82  https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
 
 # Energy regression
 if [[ $CMSSW_VERSION == CMSSW_6_* ]]; then 
