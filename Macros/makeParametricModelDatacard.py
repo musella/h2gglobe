@@ -303,7 +303,7 @@ globeSysts["JEC"] = 'JES'
 #globeSysts["JER"] = 'JER'
 
 # QCD scale and PDF variations on PT-Y (replaced k-Factor PT variation) 
-if not options.isBinnedSignal:
+if not options.isBinnedSignal and options.isDiffAnalysis<0: #not for diff analysis
 	globeSysts['pdfWeight_QCDscale'] = 'n_sc'
 	for pdfi in range(1,27):
 		globeSysts['pdfWeight_pdfset%d'%pdfi] = 'n_pdf_%d'%pdfi
@@ -891,7 +891,8 @@ printFileOptions()
 printObsProcBinLines()
 if not options.statOnly:
 	printNuisParams()
-	printTheorySysts()
+	if options.isDiffAnalysis<0:
+		printTheorySysts()
 	printLumiSyst()
 	printTrigSyst()
 	printGlobeSysts()
