@@ -172,10 +172,11 @@ if opts.parallel:
 if not opts.files and opts.datacard:
     opts.files = getFilesFromDatacard(opts.datacard)
 
-opts.jooa=False
+opts.jooa=0
 if opts.var and opts.var != "":
 	(tmp_nBins,histBins,jooa)=getVariableBins(opts.var,verbose=True)
 	opts.nBins=tmp_nBins
+	if jooa: opts.nBins+=1
 	opts.jooa=jooa
 
 defaults = copy(opts)
@@ -507,12 +508,11 @@ def writeMultiDimFit(method=None,wsOnly=False):
 	if not method:
             method = opts.method            
         if (method == "RBinScan" or method=="RBinScanStat"  ) and catsMap == "":
-	    extra=1 if opts.jooa else 0 ## it is important only to create this map. The unfolding already knows about it
-            for ibin in range(opts.nBins+extra):
+            for ibin in range(opts.nBins):
                 binstr = " --PO map='.*cat"
                 comma = "("
                 for icat in range(30):
-                    if icat % (opts.nBins+extra) == ibin:
+                    if icat % (opts.nBins) == ibin:
                         binstr += "%s%d" % (comma,icat)
                         comma ="|"
                 binstr += ").*TeV/.*Bin.*:r_Bin%d[1,0,20]'" % ibin
@@ -520,7 +520,7 @@ def writeMultiDimFit(method=None,wsOnly=False):
 
 	unfoldOptions=""
 	if method == 'RDiffXsScan' or method == 'RDiffXsScanStat':
-		unfoldOptions +=" --PO nBin=%d"%(opts.nBins+1)
+		unfoldOptions +=" --PO nBin=%d"%(opts.nBins+1 )
         
 	print 'Writing MultiDim Scan'
 	ws_args = { "RVRFScan" 	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs " ,
