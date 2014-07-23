@@ -65,7 +65,7 @@ if options.var == "":
 	histBins[4]=130
 	histBins[5]=400
 else:
-	(nBins_,boundaries) = getVariableBins(options.var,verbose=True)
+	(nBins_,boundaries,jooa) = getVariableBins(options.var,verbose=True)
 	#nBins_ += 1
 	for iBin in range(0,len(boundaries)):
 		histBins[iBin] = boundaries[iBin]
