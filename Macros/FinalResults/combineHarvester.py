@@ -79,12 +79,15 @@ def getVariableBins(var,verbose=True):
         fVar = open( baseDir + "/AnalysisScripts/diffanalysis/vars/" + var + ".dat")
         VarDef = ""
         VarCategoryBoundaries=""
+	jooa=0
         for line in fVar:
                 parts=line.split('#')[0].split('=')
                 if parts[0] == 'VarDef':
                         VarDef = parts[1]
                 if parts[0] == 'varCatBoundaries':
                         VarCategoryBoundaries= parts[1]
+		if parts[0] == "doOutOfJetAcceptance":
+			jooa=int(parts[1])
         nBins=-1
         if verbose: print "Boundaries ", 
         histBins=[]
@@ -94,7 +97,7 @@ def getVariableBins(var,verbose=True):
                         histBins.append(float(bound))
                         nBins +=1
         if verbose: print " nBins=",nBins
-        return (nBins,histBins)
+        return (nBins,histBins,jooa)
 
 
 parser = OptionParser()
@@ -169,8 +172,11 @@ if opts.parallel:
 if not opts.files and opts.datacard:
     opts.files = getFilesFromDatacard(opts.datacard)
 
+opts.jooa=False
 if opts.var and opts.var != "":
-	opts.nBins=getVariableBins(opts.var,verbose=True)[0] 
+	(tmp_nBins,histBins,jooa)=getVariableBins(opts.var,verbose=True)
+	opts.nBins=tmp_nBins
+	opts.jooa=jooa
 
 defaults = copy(opts)
 
@@ -501,11 +507,12 @@ def writeMultiDimFit(method=None,wsOnly=False):
 	if not method:
             method = opts.method            
         if (method == "RBinScan" or method=="RBinScanStat"  ) and catsMap == "":
-            for ibin in range(opts.nBins):
+	    extra=1 if opts.jooa else 0 ## it is important only to create this map. The unfolding already knows about it
+            for ibin in range(opts.nBins+extra):
                 binstr = " --PO map='.*cat"
                 comma = "("
                 for icat in range(30):
-                    if icat % opts.nBins == ibin:
+                    if icat % (opts.nBins+extra) == ibin:
                         binstr += "%s%d" % (comma,icat)
                         comma ="|"
                 binstr += ").*TeV/.*Bin.*:r_Bin%d[1,0,20]'" % ibin
@@ -806,7 +813,9 @@ def configure(config_line):
 		if option == "postFit":  opts.postFit = True
 		if option == "expected": opts.expected = 1
 	if opts.var and opts.var != "":
-		opts.nBins=getVariableBins(opts.var,verbose=True)[0] 
+		(tmp_nbins,tmp_histbins,tmp_jooa)=getVariableBins(opts.var,verbose=True)
+		if tmp_jooa:tmp_nbins+=1
+		opts.nBins=tmp_nbins
         if opts.postFitAll: opts.postFit = True
 	if opts.wspace : opts.skipWorkspace=True
 	if "-P" in opts.poix and (opts.muLow!=None or opts.muHigh!=None): sys.exit("Cannot specify muLow/muHigh with >1 POI. Remove the muLow/muHigh option and add use --setPhysicsModelParameterRanges in opts keyword") 
