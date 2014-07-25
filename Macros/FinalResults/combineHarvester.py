@@ -544,6 +544,10 @@ def writeMultiDimFit(method=None,wsOnly=False):
 		"RProcScan"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH,VH,ttH --PO higgsMassRange=124,126 --PO ggHRange=-1:10 --PO qqHRange=-2:20 --PO VHRange=-2:20 --PO ttHRange=-2:20 "
 	}
 
+	if opts.muLow!=None and opts.muHigh!=None :
+		ws_args["RDiffXsScan"]+=" --PO range=%4.2f:%4.2f"%(opts.muLow,opts.muHigh)
+		ws_args["RDiffXsScanStat"]+=" --PO range=%4.2f:%4.2f"%(opts.muLow,opts.muHigh)
+
         setpois = {
             "RVRFScan" : [ "RV", "RF" ],
             "RVScan" : [ "RV", "RF" ],
