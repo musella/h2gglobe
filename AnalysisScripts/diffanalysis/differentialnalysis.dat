@@ -7,6 +7,11 @@ phoidMvaCutEE=0.10
 # 3 categories decorrelated
 sigmaMoMCategoryBoundaries=0.0183,0.0128,0.0079,0
 
+doSystematics=0
+sigmaEoEUncEB=0.05
+sigmaEoEUncEE=0.10
+doPhotonMvaIdSyst=0
+
 massMin=100.
 massMax=180.
 nDataBins=160

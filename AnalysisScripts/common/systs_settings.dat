@@ -1,3 +1,4 @@
+doSystematics=1
 
 # do 1-sigma shifts and book only mH=125
 systRange=1

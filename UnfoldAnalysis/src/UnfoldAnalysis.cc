@@ -213,9 +213,14 @@ void UnfoldAnalysis::FillRooContainerSyst(LoopAll& l, const std::string &name, i
 
 int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 
-	int is_bkg=-1;
+	static int last_event=-1, last_run=-1, last_bin=-1;
 	int is_jet_ooa=-2;
 	ig1=-1;ig2=-1;
+
+	if( l.event == last_event && l.run == last_run ) { return last_bin; }
+	last_run = l.run;
+	last_event = l.event;
+	last_bin = -1;
 
 //effGenCut["TOT"]+=1; //DEBUG
 
@@ -229,7 +234,7 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 //	}
 
 	if(UDEBUG)cout<<"EFF DEBUG EVENT 0"<<endl;
-	if(cur_type>=0) return is_bkg; //no gen for bkg & data
+	if(cur_type>=0) return last_bin; //no gen for bkg & data
 
 //loop over the gen particles
 	map<float,int,std::greater<float> > phoHiggs;
@@ -247,7 +252,7 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 		if( !isHiggsSon) continue;
 		phoHiggs[ ((TLorentzVector*)l.gp_p4->At(igp))->Pt() ]=igp;
 	}
-	if( phoHiggs.size()<2) return is_bkg; // higgs photons does not exist
+	if( phoHiggs.size()<2) return last_bin; // higgs photons does not exist
 	if(UDEBUG)cout<<" --> 2HiggsPhoton pass"<<endl;
 
 //effGenCut["Higgs"]+=1;//DEBUG
@@ -269,22 +274,22 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 
 	assert(PhoPtDiffAnalysis.size()>0);
 
-	if( g1.Pt()/Hgg.M() < PhoPtDiffAnalysis[0] ) return is_bkg;
+	if( g1.Pt()/Hgg.M() < PhoPtDiffAnalysis[0] ) return last_bin;
 	if(UDEBUG)cout<<" --> PHO1Pt pass: "<< g1.Pt()/Hgg.M() << ">" << PhoPtDiffAnalysis[0]<<" Pt:"<<g1.Pt()<< " M:"<<Hgg.M()  <<endl;
-	if( fabs(g1.Eta()) > PhoEtaDiffAnalysis ) return is_bkg;
+	if( fabs(g1.Eta()) > PhoEtaDiffAnalysis ) return last_bin;
 	if(UDEBUG)cout<<" --> PHO1Eta pass: "<< g1.Eta() <<"<"<<PhoEtaDiffAnalysis<<endl;
 
 	if(PhoPtDiffAnalysis.size()>1)
 		{
-		if( g2.Pt()/Hgg.M() < PhoPtDiffAnalysis[1]) return is_bkg;
+		if( g2.Pt()/Hgg.M() < PhoPtDiffAnalysis[1]) return last_bin;
 		}
 	else // if only one put equal to the first photon pt cut
 		{
-		if( g2.Pt()/Hgg.M() < PhoPtDiffAnalysis[0] ) return is_bkg;
+		if( g2.Pt()/Hgg.M() < PhoPtDiffAnalysis[0] ) return last_bin;
 		}
 	if(UDEBUG)cout<<" --> PHO2Pt pass: "<< g2.Pt()/Hgg.M() << ">" << PhoPtDiffAnalysis[1]<<" Pt:"<<g2.Pt()<< " M:"<<Hgg.M()  <<endl;
 
-	if( fabs(g2.Eta()) > PhoEtaDiffAnalysis ) return is_bkg;
+	if( fabs(g2.Eta()) > PhoEtaDiffAnalysis ) return last_bin;
 	if(UDEBUG)cout<<" --> PHO2Eta pass"<< g2.Eta() <<"<"<<PhoEtaDiffAnalysis<<endl;
 
 	//compute isolation for photons
@@ -298,7 +303,7 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
         }
 //they are matched to the higgs, so I don't need to consider more photons if not pass the preselection
 
-	if(pho1Iso >= PhoIsoDiffAnalysis || pho2Iso >= PhoIsoDiffAnalysis) return is_bkg;
+	if(pho1Iso >= PhoIsoDiffAnalysis || pho2Iso >= PhoIsoDiffAnalysis) return last_bin;
 	if(UDEBUG)cout<<" --> PHOIso pass"<<endl;
 
 //effGenCut["pho"]+=1;//DEBUG
@@ -356,7 +361,7 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 			var = ((TLorentzVector*)l.genjet_algo1_p4->At(jets.begin()->second))->Pt();
 		else 
 			{
-			var = is_jet_ooa;
+			last_bin = is_jet_ooa;
 			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
 			}
 	}
@@ -371,7 +376,7 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 		}
 		else
 			{
-			var = is_jet_ooa;
+			last_bin = is_jet_ooa;
 			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
 			}
 	}
@@ -386,7 +391,7 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 		}
 		else
 			{
-			var = is_jet_ooa;
+			last_bin = is_jet_ooa;
 			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
 			}
 	}
@@ -401,7 +406,7 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 		}
 		else
 			{
-			var = is_jet_ooa;
+			last_bin = is_jet_ooa;
 			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
 			}
 	}
@@ -415,7 +420,7 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 		}
 		else
 			{
-			var = is_jet_ooa;
+			last_bin = is_jet_ooa;
 			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
 			}
 	}
@@ -429,7 +434,7 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 		}
 		else
 			{
-			var = is_jet_ooa;
+			last_bin = is_jet_ooa;
 			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
 			}
 	}
@@ -442,37 +447,33 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 		}
 		else
 			{
-			var = is_jet_ooa;
+			last_bin = is_jet_ooa;
 			return is_jet_ooa; // avoid actually the comparison between var (float) and int values
 			}
 		
 	}
 	else assert( 0  ); //variable not found
 
-	int bin=is_bkg;
-
 	assert( nVarCategories = varCatBoundaries.size()-1 );
 
 	for(int iBin=0;iBin<nVarCategories;iBin++)
-		if( varCatBoundaries[iBin] <= var && var< varCatBoundaries[iBin+1] ) bin=iBin;	
+		if( varCatBoundaries[iBin] <= var && var< varCatBoundaries[iBin+1] ) last_bin=iBin;	
 
-	if (int(var) == is_jet_ooa) {
-		bin = is_jet_ooa; //out of jet acceptance
-		assert(0); //already implemented the return
-		}
+	assert( last_bin != is_jet_ooa ); // make sure we have already returned
 
-//if(bin>=0)effGenCut["Full"]+=1; //DEBUG
-	if(bin>=0) 
-		if(UDEBUG)cout<<" --> VAR pass: "<<var<< "Bin: "<<bin <<endl;
+//if(last_bin>=0)effGenCut["Full"]+=1; //DEBUG
+	if(last_bin>=0) 
+		if(UDEBUG)cout<<" --> VAR pass: "<<var<< "Bin: "<<last_bin <<endl;
 	else
 		{
 		if(UDEBUG){
-			cout<<" --> VAR Fail: "<<var<<" Bin: "<<bin<<" ";
+			cout<<" --> VAR Fail: "<<var<<" Bin: "<<last_bin<<" ";
 			for(int i=0;i<varCatBoundaries.size();i++)cout<<varCatBoundaries[i]<<",";
 			cout<<endl;
 			}
 		}
-	return bin ;
+	
+	return last_bin;
 }
 
 // -------------------------------------------------------------------------------------------

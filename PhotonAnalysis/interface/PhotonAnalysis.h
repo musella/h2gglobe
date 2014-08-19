@@ -264,7 +264,9 @@ class PhotonAnalysis : public BaseAnalysis
 
     string sigEoEtransformFile;
     bool doSigEoEtransform;
-
+    float sigmaEoEUncEB;
+    float sigmaEoEUncEE;
+    
     int   nEtaCategories, nR9Categories, nPtCategories, nPtOverMCategories, nVtxCategories;
     float R9CatBoundary;
     bool  usePUjetveto;
