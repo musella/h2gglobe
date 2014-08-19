@@ -3041,7 +3041,7 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
 	          if ( l.gp_status[igp] != 1) continue;
 	          if ( l.gp_pdgid[igp] == 12 || l.gp_pdgid[igp]==14 || l.gp_pdgid[igp]==16) continue; //neutrinos
 	          if ( g1.DeltaR( *((TLorentzVector*)(l.gp_p4->At(igp))) ) < 0.4 && pho1 !=igp ) pho1Iso += ((TLorentzVector*)(l.gp_p4->At(igp)))->Pt();
-	          if ( g2.DeltaR( *((TLorentzVector*)(l.gp_p4->At(igp))) ) < 0.4 && pho2 !=igp ) pho1Iso += ((TLorentzVector*)(l.gp_p4->At(igp)))->Pt();
+	          if ( g2.DeltaR( *((TLorentzVector*)(l.gp_p4->At(igp))) ) < 0.4 && pho2 !=igp ) pho2Iso += ((TLorentzVector*)(l.gp_p4->At(igp)))->Pt();
               }
 //th    ey are matched to the higgs, so I don't need to consider more photons if not pass the preselection
 

@@ -289,7 +289,8 @@ globeSysts={}
 globeSysts['idEff'] = 'n_id_eff'
 ##globeSysts['triggerEff'] = 'n_trig_eff'
 if not options.isCutBased:
-  globeSysts['phoIdMva'] = 'n_id_mva'
+  if options.isDiffAnalysis <=0 :
+  	globeSysts['phoIdMva'] = 'n_id_mva'
   globeSysts['regSig'] = 'n_sigmae'
 if options.isBinnedSignal:
 	globeSysts['E_scale'] = 'n_e_scale'

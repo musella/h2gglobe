@@ -65,8 +65,21 @@ Signal fit is painful, because we must check that fits converges everywhere.
 
 ~~~
 cd SimultaneousSignalFitting
-./bin/calcPhotonSystConsts -i ../CMS-HGG_syst.root -m 125 -n 20 -p `echo Bin{0..5} | tr ' ' ','` -o dat/unfoldPhotonCatSyst.dat
-./bin/SignalFit -i ../CMS-HGG_sig.root -d dat/unfoldAnalysis.dat -s dat/unfoldPhotonCatSyst.dat -L 120 -H 130 --nCats 20 --procs `echo Bin{0..5} | tr ' ' ',' `
+./bin/calcPhotonSystConsts -i CMS-HGG_syst.root \
+     -m 125 -n 20 -p `echo Bin{0..5} | tr ' ' ','` -o dat/unfoldPhotonCatSyst.dat \
+     --photonCatScales EBlowR9,EBhighR9,EElowR9,EEhighR9 \
+     --photonCatScalesCorr '' \
+     --photonCatSmears EBlowR9,EBhighR9,EBlowR9Phi,EBhighR9Phi,EElowR9,EEhighR9 \
+     --globalScales '' \
+     --globalScalesCorr Absolute,Geant4,NonLinearity:0:2.:5:1.5
+
+./bin/SignalFit -i CMS-HGG_Sig.root \
+     -o CMS-HGG_sigfit.root \
+     -d dat/unfoldAnalysis.dat \
+     -s dat/unfoldPhotonCatSyst.dat \
+     -n 20 \
+     -L 120 -H 130 \
+     --skipSecondaryModels  | tee outdir/var/sigfit.log
 ~~~
 
 * **unfoldPhotonCatSyst.dat**: before fitting, check if there are some inf or nan inside. (Very likely they come from null histograms so they can be set to 0)       
@@ -125,7 +138,7 @@ cd SimultaneousSignalFitting
 ./bin/calcPhotonSystConsts -i CMS-HGG_syst.root \
      -m 125 -n 20 -p `echo Bin{0..5} | tr ' ' ','` -o dat/unfoldPhotonCatSyst.dat \
      --photonCatScales EBlowR9,EBhighR9,EElowR9,EEhighR9 \
-     --photonCatScalesCorr EBlowR9,EBhighR9,EElowR9,EEhighR9 \
+     --photonCatScalesCorr '' \
      --photonCatSmears EBlowR9,EBhighR9,EBlowR9Phi,EBhighR9Phi,EElowR9,EEhighR9 \
      --globalScales '' \
      --globalScalesCorr Absolute,Geant4,NonLinearity:0:2.:5:1.5
@@ -134,9 +147,10 @@ cd SimultaneousSignalFitting
      -d dat/unfoldAnalysis.dat \
      -s dat/unfoldPhotonCatSyst.dat \
      -n 20 \
+     -L 120 -H 130 \
      --skipPlots \
-     --cloneFits CMS-HGG_sigfit.root | tee outdir/var/sigfitrun.log
-     -L 120 -H 130
+     --skipSecondaryModels \
+     --cloneFits CMS-HGG_sigfit.root | tee outdir/var/sigfit_newsyst.log
 ~~~
 
 * Now we produce the datacard
@@ -144,8 +158,7 @@ cd SimultaneousSignalFitting
 ~~~
 cd [h2gglobe/]UnfoldAnalysis/Macros
 python ../../Macros/makeParametricModelDatacard.py -i CMS-HGG_syst.root \
-      --photonCatScales EBlowR9:0.866,EBhighR9:0.866,EElowR9:0.866,EEhighR9:0.866 \
-      --photonCatScalesCorr EBlowR9:0.5,EBhighR9:0.5,EElowR9:0.5,EEhighR9:0.5 \
+      --photonCatScales EBlowR9,EBhighR9,EElowR9,EEhighR9 \
       --globalScales '' \
       --globalScalesCorr Absolute:0.0001,Geant4:0.0005,NonLinearity:0.001 \
       -o cms_hgg_datacard_var.txt \

@@ -24,7 +24,9 @@ if __name__=="__main__":
 	parser.add_option("-D","--dir" ,dest='dir',type='string',help="Directory. Default=%default",default=dir_)
 	parser.add_option("-s","" ,dest='sig',type='string',help="Ws Sig not fitted. Default=%default",default=wsFile_)
 	parser.add_option("-v","--var" ,dest='var',type='string',help="Variable. If non null read bins from the var file. Default=%default",default="")
-	parser.add_option("-k","--split" ,dest='split',action='store_true',help="Add split info for root files for Nicolas (>v5). Default=%default",default=False)
+	parser.add_option("-k","--split" ,dest='split',action='store_true',help="Add split info for root files for Nicolas (>v5). Default=%default",default=True)
+	parser.add_option("-K","--nosplit" ,dest='split',action='store_false',help="Dont split info for root files.")
+	parser.add_option("","--unblind" ,dest='unblind',action='store_true',help="Unblind Plots. Default=%default",default=False)
 	(options,args)=parser.parse_args()
 	dir_=options.dir
         wsFile_=options.sig
@@ -73,13 +75,16 @@ else:
 
 
 ## Draw Canvas nll##
+
+ExpStr="Exp"
+if options.unblind: ExpStr=""
 try:	DrawNLL(dir_,nBins_)
 except ReferenceError: pass ## no file
-try:	DrawNLL(dir_,nBins_,"RecoScanExp")
+try:	DrawNLL(dir_,nBins_,"RecoScan%s"%ExsStr)
 except ReferenceError: pass ## no file
-try:	DrawNLL(dir_,nBins_,"RecoScanStatExp")
+try:	DrawNLL(dir_,nBins_,"RecoScanStat%s"%ExpStr)
 except ReferenceError: pass ## no file
-try:	DrawNLL(dir_,nBins_,"UnfoldScanStatExp")
+try:	DrawNLL(dir_,nBins_,"UnfoldScanStat%s"%ExpStr)
 except ReferenceError: pass ## no file
 
 ### Get The Histograms  and normalize to the total xSec
@@ -144,13 +149,13 @@ f.Close()
 
 C3=ROOT.TCanvas("c3","c3",800,800)
 
-try: 	MuU=getMu(nBins_,dir_,"UnfoldScanExp",1)[0]
+try: 	MuU=getMu(nBins_,dir_,"UnfoldScan%s"%ExpStr,1)[0]
 except: MuU=None
-try:	MuUS=getMu(nBins_,dir_,"UnfoldScanStatExp",1)[0]
+try:	MuUS=getMu(nBins_,dir_,"UnfoldScanStat%s"%ExpStr,1)[0]
 except: MuUS=None
-try:	MuR=getMu(nBins_,dir_,"RecoScanExp",1)[0]
+try:	MuR=getMu(nBins_,dir_,"RecoScan%s"%ExpStr,1)[0]
 except: MuR=None
-try:	MuRS=getMu(nBins_,dir_,"RecoScanStatExp",1)[0]
+try:	MuRS=getMu(nBins_,dir_,"RecoScanStat%s"%ExpStr,1)[0]
 except: MuRS=None
 
 
@@ -196,7 +201,8 @@ if MuU:
 	print>>MuFile, "Bin%d"%iBin,"& $",MuU[iBin][0], "$ & $", MuU[iBin][0]-MuU[iBin][1],"$ & $",MuU[iBin][2] - MuU[iBin][0],"$ \\\\"
 print >>MuFile,"\\hline"
 print >>MuFile,"\\end{tabular}"
-print >>MuFile,"\\caption{Expected signal-strength stat+syst for %s.}"%options.var
+if optios.unblind: 	print >>MuFile,"\\caption{Observed signal-strength stat+syst for %s.}"%options.var
+else : 			print >>MuFile,"\\caption{Expected signal-strength stat+syst for %s.}"%options.var
 print >>MuFile,"\\end{table}"
 print >>MuFile
 
@@ -212,7 +218,8 @@ if MuUS:
 	print>>MuFile, "%%%%Bin%d"%iBin,"& $",MuUS[iBin][0], "$ & $", MuUS[iBin][0]-MuUS[iBin][1],"$ & $",MuUS[iBin][2] - MuUS[iBin][0],"$ \\\\"
 print >>MuFile,"%%\\hline"
 print >>MuFile,"%%\\end{tabular}"
-print >>MuFile,"%%%%\\caption{Expected signal-strength stat-only for %s.}"%(options.var)
+if options.unblind:	print >>MuFile,"%%%%\\caption{Observed signal-strength stat-only for %s.}"%(options.var)
+else:			print >>MuFile,"%%%%\\caption{Expected signal-strength stat-only for %s.}"%(options.var)
 print >>MuFile,"\\end{table}"
 
 print >>MuFile

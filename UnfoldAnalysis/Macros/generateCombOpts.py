@@ -10,6 +10,7 @@ if __name__=='__main__':
 	usage = "usage: %prog [options]"
 	parser=OptionParser(usage=usage)
 	parser.add_option("-v","--var" ,dest='var',type='string',help="variables name. Default=%default",default="pToMscaled")
+	parser.add_option("","--unblind",action='store_true',default=False)
 	(options,args)=parser.parse_args()
 	sys.argv=[]
 
@@ -20,11 +21,13 @@ def WritePreamble(file,var):
 	file.write("\n")
 
 def WriteLine(file,var,iBin,method='',extraString=''):
-		dict={'extra':extraString,'bin':iBin,'var':var,'method':method}
+		dict={'extra':extraString,'bin':iBin,'var':var,'method':method, 'expStr':'Exp'}
+		if options.unblind:
+			dict['expStr']=''
 		if method == 'RBinScan':
-			dict['outdir']='%(var)s/RecoScan%(extra)sExpBin%(bin)d'%dict
+			dict['outdir']='%(var)s/RecoScan%(extra)s%(expStr)sBin%(bin)d'%dict
 		elif method== 'RDiffXsScan':
-			dict['outdir']='%(var)s/UnfoldScan%(extra)sExpBin%(bin)d'%dict
+			dict['outdir']='%(var)s/UnfoldScan%(extra)s%(expStr)sBin%(bin)d'%dict
 		else:
 			dict['outdir']='outdir'
 		dict['mh']=125.
@@ -39,6 +42,7 @@ def WriteLine(file,var,iBin,method='',extraString=''):
 		dict['opts']='opts=--squareDistPoi'
 		dict['poix']='r_Bin%(bin)d'%dict
 		dict['exp']='expected=1 expectSignal=1 expectSignalMass=%(mh)f'%dict
+		if options.unblind: dict['exp']=''
 		if extraString=='Stat':
 			dict['stat']='freezeAll=1'
 		else:
@@ -68,7 +72,10 @@ if __name__=="__main__":
 
 	nBins_=getVariableBins(options.var)[0] 
 
-	file=open("combOpts_%s.dat"%options.var,"w")
+	fileName="combOpts_%s.dat"%options.var
+	if options.unblind:
+		fileName="combOpts_unblind_%s.dat"%options.var
+	file=open(fileName,"w")
 
 	WritePreamble(file,options.var)
 	file.write('\n\n### RECO SCAN ###\n')

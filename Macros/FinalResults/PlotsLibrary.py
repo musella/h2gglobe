@@ -28,6 +28,57 @@ from ROOT import histBins;
 import math
 from glob import glob
 
+#from makeCombinePlots import cleanSpikes1D
+def cleanSpikes1D(rfix):
+
+ # cindex is where deltaNLL = 0 (pre anything)
+ MAXDER = 1.0
+ for i,r in enumerate(rfix):
+   if abs(r[1]) <0.001: cindex = i
+
+ lhs = rfix[0:cindex]; lhs.reverse()
+ rhs= rfix[cindex:-1]
+ keeplhs = []
+ keeprhs = []
+
+ for i,lr in enumerate(lhs): 
+   if i==0: 
+   	prev = lr[1]
+	idiff = 1
+   if abs(lr[1]-prev) > MAXDER :
+   	idiff+=1
+   	continue 
+   keeplhs.append(lr)
+   prev = lr[1]
+   idiff=1
+ keeplhs.reverse()
+
+ for i,rr in enumerate(rhs):
+   if i==0: 
+   	prev = rr[1]
+	idiff = 1
+   if abs(rr[1]-prev) > MAXDER : 
+   	idiff+=1
+   	continue 
+   keeprhs.append(rr)
+   prev = rr[1]
+   idiff=1
+ 
+ rfix = keeplhs+keeprhs
+ 
+ rkeep = []
+ #now try to remove small jagged spikes
+ for i,r in enumerate(rfix):
+   if i==0 or i==len(rfix)-1: 
+   	rkeep.append(r)
+   	continue
+   tres = [rfix[i-1][1],r[1],rfix[i+1][1]]
+   mean = float(sum(tres))/3.
+   mdiff = abs(max(tres)-min(tres))
+   if abs(tres[1] - mean) > 0.6*mdiff :continue
+   rkeep.append(r)
+ return rkeep
+
 
 def findPath():
 	#figure out globe name
@@ -102,6 +153,7 @@ def getMu(nBins=6,dir="jobs",File="UnfoldScanExp",sigma=1,Interpolate=True):
 			t.GetEntry(iEntry)
 			values.append( (A.var,A.nll) )
 		values.sort()
+		values=cleanSpikes1D(values)
 		#Get Minimum and errors
 		(x,y)=values[0] #var,nll
 		for (x1,y1) in values:

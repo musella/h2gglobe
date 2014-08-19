@@ -878,6 +878,8 @@ void makeSignalCompositionPlot(int nbins, int nCats, map<string,string> labels, 
   colors.push_back(kAzure-6);
   colors.push_back(kOrange+7);
   colors.push_back(kViolet);
+  colors.push_back(kBlue-4);
+  colors.push_back(kGray);
 
   for (int i=0; i<nbins; i++)
     processName.push_back(Form("bin%d",i));
@@ -1339,7 +1341,7 @@ void makeParametricSignalModelPlots(string sigFitFileName, string outPathName, i
   system(Form("rm -f %s/animation.gif",outPathName.c_str()));
   // TEMPORARY FIX FOR COSTHETASTAR!!!
   map<string,RooDataSet*>::iterator dataIt=dataSets.begin();
-  //dataIt++;
+  dataIt++;
   for (; dataIt!=dataSets.end(); dataIt++){
     pair<double,double> thisSigRange = getEffSigma(mass,pdfs[dataIt->first],m_hyp-10.,m_hyp+10.);
     //pair<double,double> thisSigRange = getEffSigBinned(mass,pdf[dataIt->first],m_hyp-10.,m_hyp+10);
