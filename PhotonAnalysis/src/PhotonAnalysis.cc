@@ -171,6 +171,8 @@ PhotonAnalysis::PhotonAnalysis()  :
 
     sigEoEtransformFile="";
     doSigEoEtransform = false;
+    sigmaEoEUncEB = 0.1;
+    sigmaEoEUncEE = 0.1;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -1285,6 +1287,8 @@ void PhotonAnalysis::Init(LoopAll& l)
     eSmearPars.byRun = false;
     eSmearPars.n_categories = tmp_smear_smearing_cat.size();
     eSmearPars.photon_categories = tmp_smear_smearing_cat;
+    eSmearPars.sigmaEoEUncEB = sigmaEoEUncEB;
+    eSmearPars.sigmaEoEUncEE = sigmaEoEUncEE;
     
     eSmearPars.smearing_sigma = tmp_smear_smearing[0].scale_offset;
     eSmearPars.smearing_sigma_error = tmp_smear_smearing[0].scale_offset_error;

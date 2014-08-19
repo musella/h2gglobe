@@ -43,6 +43,8 @@ puTarget=aux/HCP2012_freezing_v2.json.69400.observed.pileup.root
 energyCorrectionMethod=Bendavid
 doEcorrectionSmear=1
 doEcorrectionSyst=0
+sigmaEoEUncEB=0.10
+sigmaEoEUncEE=0.10
 
 ## energy scale adjustement and errors
 scale_offset_file=energy_scale_offsets.dat

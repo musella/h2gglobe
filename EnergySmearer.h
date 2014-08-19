@@ -124,6 +124,8 @@ public:
           std::string efficiency_file;
           // errors on correction will be a fraction of the correction itself   
           float       corrRelErr;
+	  float       sigmaEoEUncEB;
+	  float       sigmaEoEUncEE;
   };
   
   EnergySmearer(EnergySmearer * orig, const std::vector<PhotonCategory> & presel=std::vector<PhotonCategory>());
