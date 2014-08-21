@@ -201,7 +201,7 @@ if MuU:
 	print>>MuFile, "Bin%d"%iBin,"& $",MuU[iBin][0], "$ & $", MuU[iBin][0]-MuU[iBin][1],"$ & $",MuU[iBin][2] - MuU[iBin][0],"$ \\\\"
 print >>MuFile,"\\hline"
 print >>MuFile,"\\end{tabular}"
-if optios.unblind: 	print >>MuFile,"\\caption{Observed signal-strength stat+syst for %s.}"%options.var
+if options.unblind: 	print >>MuFile,"\\caption{Observed signal-strength stat+syst for %s.}"%options.var
 else : 			print >>MuFile,"\\caption{Expected signal-strength stat+syst for %s.}"%options.var
 print >>MuFile,"\\end{table}"
 print >>MuFile
