@@ -213,14 +213,19 @@ void UnfoldAnalysis::FillRooContainerSyst(LoopAll& l, const std::string &name, i
 
 int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 
-	static int last_event=-1, last_run=-1, last_bin=-1;
+	static int last_event=-1, last_run=-1, last_bin=-1, last_ig1=-1, last_ig2=-1;
+;
 	int is_jet_ooa=-2;
-	ig1=-1;ig2=-1;
 
-	if( l.event == last_event && l.run == last_run ) { return last_bin; }
+	if( l.event == last_event && l.run == last_run ) { 
+		ig1 = last_ig1;
+		ig2 = last_ig2;
+		return last_bin; 
+	}
 	last_run = l.run;
 	last_event = l.event;
 	last_bin = -1;
+	ig1=-1;ig2=-1;
 
 //effGenCut["TOT"]+=1; //DEBUG
 
@@ -264,7 +269,8 @@ int UnfoldAnalysis::computeGenBin(LoopAll &l,int cur_type,int &ig1,int &ig2){
 	int pho2=iPho->second;
 
 	ig1=pho1;ig2=pho2;
-
+	last_ig1=ig1;last_ig2=ig2;
+	
 	TLorentzVector g1=*((TLorentzVector*)l.gp_p4->At(pho1));
 	TLorentzVector g2=*((TLorentzVector*)l.gp_p4->At(pho2));
 //particle level higgs definition
