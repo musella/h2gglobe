@@ -80,7 +80,7 @@ ExpStr="Exp"
 if options.unblind: ExpStr=""
 try:	DrawNLL(dir_,nBins_)
 except ReferenceError: pass ## no file
-try:	DrawNLL(dir_,nBins_,"RecoScan%s"%ExsStr)
+try:	DrawNLL(dir_,nBins_,"RecoScan%s"%ExpStr)
 except ReferenceError: pass ## no file
 try:	DrawNLL(dir_,nBins_,"RecoScanStat%s"%ExpStr)
 except ReferenceError: pass ## no file
