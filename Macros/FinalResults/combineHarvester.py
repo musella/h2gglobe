@@ -65,7 +65,46 @@ def getFilesFromDatacard(datacard):
         ret += ",%s" % f
     return ret
 
+def getVariableBinsFromWs(var,wsFileName,verbose=True): 
+	''' Get the binning from the ws directly
+		inside each ws (sig/data/multipdf/sigfit) there is a TMacro with the content of the corresponding loaded dat file
+	'''
+	import ROOT
+	wsFile = ROOT.TFile.Open(wsFileName)
+	if wsFile == None : print "ws %s not found !!!"%wsFileName
+	m=wsFile.Get(var)	
+	fVar=[]
+	nLines=m.GetListOfLines().GetSize()
+	for iLine in range(0,nLines):
+		fVar.append(  m.GetListOfLines().At(iLine).GetName()  )
+	wsFile.Close()
+
+        VarDef = ""
+        VarCategoryBoundaries=""
+	jooa=0
+        for line in fVar:
+                parts=line.split('#')[0].split('=')
+                if parts[0] == 'VarDef':
+                        VarDef = parts[1]
+                if parts[0] == 'varCatBoundaries':
+                        VarCategoryBoundaries= parts[1]
+		if parts[0] == "doOutOfJetAcceptance":
+			jooa=int(parts[1])
+        nBins=-1
+        if verbose: print "Boundaries ", 
+        histBins=[]
+        for bound in VarCategoryBoundaries.split(','):
+                if bound != "":
+                        if verbose: print float(bound),
+                        histBins.append(float(bound))
+                        nBins +=1
+        if verbose: print " nBins=",nBins
+        return (nBins,histBins,jooa)
+
 def getVariableBins(var,verbose=True):
+	''' Obsolete Take Them from WS '''
+	print "OBSOLETE getVariableBins from txt. Take them from WS !!!"
+	print "I'll continue with that"
         wd=os.environ['PWD']
         wd_list=wd.split('/')
         ### todo: make it work for any directory that just contains h2gglobe
@@ -174,7 +213,10 @@ if not opts.files and opts.datacard:
 
 opts.jooa=0
 if opts.var and opts.var != "":
-	(tmp_nBins,histBins,jooa)=getVariableBins(opts.var,verbose=True)
+	#get files in the datacard -- opts.files can contain something else
+	wsFile=getFilesFromDatacard(opts.datacard).split(',')[0]  # and take the first ws
+	(tmp_nBins,histBins,jooa)=getVariableBinsFromWs(opts.var,wsFile,verbose=True)
+	#(tmp_nBins,histBins,jooa)=getVariableBins(opts.var,verbose=True)
 	opts.nBins=tmp_nBins
 	if jooa: opts.nBins+=1
 	opts.jooa=jooa
@@ -817,7 +859,9 @@ def configure(config_line):
 		if option == "postFit":  opts.postFit = True
 		if option == "expected": opts.expected = 1
 	if opts.var and opts.var != "":
-		(tmp_nbins,tmp_histbins,tmp_jooa)=getVariableBins(opts.var,verbose=True)
+		wsFile=getFilesFromDatacard(opts.datacard).split(',')[0]  # and take the first ws
+		(tmp_nBins,tmp_histBins,tmp_jooa)=getVariableBinsFromWs(opts.var,wsFile,verbose=True)
+		#(tmp_nbins,tmp_histbins,tmp_jooa)=getVariableBins(opts.var,verbose=True)
 		if tmp_jooa:tmp_nbins+=1
 		opts.nBins=tmp_nbins
         if opts.postFitAll: opts.postFit = True
