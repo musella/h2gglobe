@@ -5,7 +5,14 @@ import sys, os
 import array
 from math import sqrt, fabs
 
+from zmmgPlot import ytitle
+
 objs = []
+
+def getCatName(icat, labels=None):
+    if labels:
+        return labels[icat]
+    return "cat%d" % igroup
 
 def setStat(h,prev=None,vert=-1,horiz=0.):
     ROOT.gPad.Update()
@@ -140,21 +147,23 @@ def main(options,args):
     results = []
     ## methods = [1,0.95,0.8,0.683,0.5,0.4,0.3,0.2]
     ## methods = [recFit,0.683,(85.,100.),(80.,100.),(86.,96.),(88.,94.)]
-    methods = [recFit,1.,0.683,(85.,97.),(86.,96.),(88,94),(89,93),(90,92)]
+    ## methods = [recFit,1.,0.683,(85.,97.),(86.,96.),(88,94),(89,93),(90,92)]
+    methods = [recFit]
     if len(options.groups) > 0:
         categories = [ [int(t) for t in g.split(",")] for g in options.groups ]
     else:
         categories = [ [i] for i in range(options.ncat) ]
     for igroup,group in enumerate(categories):
 
-        hdata = fin.Get("th1f_data_mass_cat%d" % group[0]).Clone("data_cat%d" % igroup)
+        catName = getCatName(igroup,options.labels)
+        hdata = fin.Get("th1f_data_mass_cat%d" % group[0]).Clone("data_%s" % catName)
 
         hmcs = {}
-        hmcs[0] = fin.Get("th1f_sig_dymm_mass_m90_cat%d" % group[0]).Clone("mc_cat%d" % igroup)
+        hmcs[0] = fin.Get("th1f_sig_dymm_mass_m90_cat%d" % group[0]).Clone("mc_%s" % catName)
         
         for isig in range(1,options.nsigma+1):
-            hmcs[options.step*float(isig)] = fin.Get("th1f_sig_dymm_mass_m90_cat%d_E_scaleUp0%d_sigma" % (group[0],isig) ).Clone("mc_cat%d_Up0%d" % (igroup,options.step*float(isig)*10.))
-            hmcs[-options.step*float(isig)] = fin.Get("th1f_sig_dymm_mass_m90_cat%d_E_scaleDown0%d_sigma" % (group[0],isig) ).Clone("mc_cat%d_Down0%d" % (igroup,options.step*float(isig)*10.))
+            hmcs[options.step*float(isig)] = fin.Get("th1f_sig_dymm_mass_m90_cat%d_E_scaleUp0%d_sigma" % (group[0],isig) ).Clone("mc_%s_Up0%d" % (catName,options.step*float(isig)*10.))
+            hmcs[-options.step*float(isig)] = fin.Get("th1f_sig_dymm_mass_m90_cat%d_E_scaleDown0%d_sigma" % (group[0],isig) ).Clone("mc_%s_Down0%d" % (catName,options.step*float(isig)*10.))
 
         for icat in group[1:]:
             hdata.Add( fin.Get("th1f_data_mass_cat%d" % icat) )
@@ -169,8 +178,10 @@ def main(options,args):
         icat = igroup
         hdata.SetLineColor(ROOT.kBlack)
         hdata.SetMarkerColor(ROOT.kBlack)
+        ytitle( hdata, "Events / %(binw)s GeV" )
         for s,h in hmcs.iteritems():
             h.SetLineColor(ROOT.kRed)
+            ytitle( h, "Events / %(binw)s GeV" )
         hmcs[0].SetLineColor(ROOT.kBlue)
         
         ## hmcs[0].GetXaxis().SetRangeUser(80.,100.)
@@ -188,13 +199,14 @@ def main(options,args):
         for s,h in hmcs.iteritems():
             h.GetListOfFunctions().Clear()
 
-        canv = ROOT.TCanvas("cat_%d" % icat, "cat_%d" % icat )
+        canv = ROOT.TCanvas(catName, catName )
         canv.cd()
 
-        ndata = hdata.Integral()
+        norm = hdata.GetMaximum() / hmcs[0].GetMaximum() * hmcs[0].Integral()
         hmcs[0].Rebin(4)
         hdata.Rebin(4)
-        h = hmcs[0].DrawNormalized("hist",ndata)
+        h = hmcs[0].DrawNormalized("hist",norm)
+        ytitle( h, "Events / %(binw)1.1g GeV" )
         st = setStat(h)
         objs.extend((st,h))
         
@@ -211,7 +223,7 @@ def main(options,args):
             h.SetLineColor(ROOT.kRed)
             if s < 0:
                 h.SetLineStyle(ROOT.kDashed)
-            h = h.DrawNormalized("histsames",ndata)
+            h = h.DrawNormalized("histsames",norm)
             q = setStat(h,st,-1.*ip)
             objs.extend([q,h])
             ip += 1
@@ -244,7 +256,7 @@ def main(options,args):
             err = sqrt(data[1]**2 + mc[1]**2)
             scaleP = func.Eval(data[0]+err)
             scaleM = func.Eval(data[0]-err)
-            scales.append( (data[0],mc[0],100.*(1.-data[0]/mc[0]),100.*(err/mc[0]),0.5*(scaleP-scaleM),(data[0]-mc[0])/err,scale,scaleM,scaleP) )
+            scales.append( (data[0],mc[0],100.*(data[0]/mc[0]-1.),100.*(err/mc[0]),0.5*(scaleP-scaleM),(data[0]-mc[0])/err,scale,scaleM,scaleP) )
             ip = calib.GetN()
             calib.SetPoint( ip, data[0], scale )
             calib.SetPointError( ip, err, 0.5*(scaleP-scaleM) )
@@ -252,9 +264,11 @@ def main(options,args):
             calib.Draw("ap")
         for fmt in "C","png","pdf":
             canv.SaveAs("%s.%s" % (canv.GetName(),fmt) )
+            
         out.write( "Method: %s\n" % toStr(method ) )
         for icat, scale in enumerate(scales):
-            out.write("cat: %d " % icat )
+            catName = getCatName(icat,options.labels)
+            out.write(("cat: %s " % catName).ljust(25) )
             for num in scale:
                 out.write(("%.4g" % num).ljust(10) )
             out.write("\n")
@@ -293,6 +307,8 @@ if __name__ == "__main__":
     
     (options, args) = parser.parse_args()
     print options
+    if len(options.labels) == 0:
+        options.labels = None
     ## options.groups.extend( [ "0,1", "2,3", "4,5", "6,7" ] )
     ## options.groups.extend( [ "0,4", "1,5", "2,6", "3,7" ] )
     ## options.groups.extend( [ "0,1,4,5", "2,3,6,7" ] )

@@ -624,7 +624,7 @@ if __name__ == "__main__":
                                      ("mmg_pt"   ,[(rename,catlabels)],defdrawopt,deflegPos),
                                      ("mmg_eta"  ,[(rename,catlabels)],defdrawopt,deflegPos),
                                      ("mmg_phi"  ,[(rename,catlabels)],defdrawopt,deflegPos),
-                                     ("mmg_mass" ,[(rename,catlabels)],defdrawopt,deflegPos),
+                                     ("mmg_mass" ,[(rename,catlabels),("Rebin",2),(ytitle,"Events / %(binw)s GeV")],defdrawopt,deflegPos),
                                      ("nvtx"     ,[(rename,catlabels)],defdrawopt,deflegPos),
                                      ("pho_n"    ,[(rename,catlabels)],defdrawopt,deflegPos),
                                      ("pho_e"    ,[(rename,catlabels)],defdrawopt,deflegPos),
@@ -643,7 +643,7 @@ if __name__ == "__main__":
                                      ("mumu_pt"  ,[(rename,catlabels)],defdrawopt,deflegPos),
                                      ("mumu_eta" ,[(rename,catlabels)],defdrawopt,deflegPos),
                                      ("mumu_phi" ,[(rename,catlabels)],defdrawopt,deflegPos),
-                                     ("mumu_mass",[(rename,catlabels),("Rebin",4)],defdrawopt,deflegPos),
+                                     ("mumu_mass",[(rename,catlabels),("Rebin",4),(ytitle,"Events / %(binw)s GeV")],defdrawopt,deflegPos),
                                      ]
                            )
 
