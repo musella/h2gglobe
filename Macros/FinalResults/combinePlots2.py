@@ -55,7 +55,7 @@ from PlotsLibrary import findPath,getMu,DrawNLL,GetXsec
 
 #from globe_name.Macros.FinalResults.combineHarvester import getVariableBins 
 sys.path.append(mypath+"/Macros/FinalResults")
-from combineHarvester import getVariableBins
+from combineHarvester import getVariableBins,getVariableBinsFromWs
 
 #take from the file
 if options.var == "":
@@ -67,7 +67,8 @@ if options.var == "":
 	histBins[4]=130
 	histBins[5]=400
 else:
-	(nBins_,boundaries,jooa) = getVariableBins(options.var,verbose=True)
+	(nBins_,boundaries,jooa)=getVariableBinsFromWs(options.var,wsFile_,verbose=True)
+	#(nBins_,boundaries,jooa) = getVariableBins(options.var,verbose=True)
 	#nBins_ += 1
 	for iBin in range(0,len(boundaries)):
 		histBins[iBin] = boundaries[iBin]
@@ -78,7 +79,7 @@ else:
 
 ExpStr="Exp"
 if options.unblind: ExpStr=""
-try:	DrawNLL(dir_,nBins_)
+try:	DrawNLL(dir_,nBins_,"UnfoldScan%s"%ExpStr)
 except ReferenceError: pass ## no file
 try:	DrawNLL(dir_,nBins_,"RecoScan%s"%ExpStr)
 except ReferenceError: pass ## no file
@@ -104,12 +105,18 @@ if options.split:
 		HSplit[p]=ROOT.TH1F("HExp_"+p,"HExpected "+p,nBins_,histBins)
 
 C2=ROOT.TCanvas("c2","c2")
-(Mu,Graphs) = getMu(nBins_,dir_)
+# this are the ones put in the root file
+if options.unblind:(Mu,Graphs) = getMu(nBins_,dir_,'UnfoldScan')
+else: (Mu,Graphs) = getMu(nBins_,dir_,'UnfoldScanExp')
+
 ROOT.gStyle.SetErrorX(0)
 ROOT.gStyle.SetOptStat(0)
 H=ROOT.TH1F("data","Data",nBins_,histBins);
 HErr=ROOT.TH1F("error","Error",nBins_,histBins);
 HExp=ROOT.TH1F("Expected","Expected",nBins_,histBins);
+
+max_h=-1
+min_h=0
 
 for iBin in range(0,nBins_):
 	print "Mu ",Mu[iBin][0], "+-", Mu[iBin][1],Mu[iBin][2]
@@ -123,9 +130,63 @@ for iBin in range(0,nBins_):
 	HErr.SetBinContent(iBin+1, (low+high)/2)
 	HErr.SetBinError(iBin+1,math.fabs(low-high)/2)
 	H.SetBinContent(iBin+1,xSecPerBin[iBin]/H.GetBinWidth(iBin+1) * Mu[iBin][0] )
+
+	max_h=max(max_h,high)
+	max_h=max(max_h,low)
+	max_h=max(max_h,HExp.GetMaximum())
+	min_h=min(min_h,low)
+	min_h=min(min_h,high)
+	min_h=min(min_h,HExp.GetMinimum())
+
 H.SetMarkerStyle(20)
+max_h *= 1.25
+min_h *= 1.25  ### <=0
+H.SetMaximum(max_h)
+H.SetMinimum(min_h)
 H.Draw("P")
+
 H.GetYaxis().SetTitle("d#sigma/dP_{T}")
+if   options.var=='pToMscaled': 
+	H.GetYaxis().SetTitle("d#sigma/dp_{T}")
+	H.GetXaxis().SetTitle("p_{T}")
+elif options.var=='dPhi': 
+	H.GetYaxis().SetTitle("d#sigma/d#phi^{#gamma#gamma}")
+	H.GetXaxis().SetTitle("#phi^{#gamma#gamma}")
+elif options.var=='Ygg': 
+	H.GetYaxis().SetTitle("d#sigma/dy^{#gamma#gamma}")
+	H.GetXaxis().SetTitle("y^{#gamma#gamma}")
+elif options.var=='Njets': 
+	H.GetYaxis().SetTitle("d#sigma/dN_{jets}")
+	H.GetXaxis().SetTitle("N_{jets}")
+elif options.var=='CosThetaStar': 
+	H.GetYaxis().SetTitle("d#sigma/dCos(#theta^{*})")
+	H.GetXaxis().SetTitle("Cos(#theta^{*})")
+elif options.var=='Fiducial': 
+	H.GetYaxis().SetTitle("#sigma")
+	H.GetXaxis().SetTitle("")
+elif options.var=='LeadJetpT': 
+	H.GetYaxis().SetTitle("d#sigma/dp_{T}^{j}")
+	H.GetXaxis().SetTitle("p_{T}^{j}")
+elif options.var=='dRapidityHiggsJet': 
+	H.GetYaxis().SetTitle("d#sigma/dy^{Hj}")
+	H.GetXaxis().SetTitle("y^{Hj}")
+elif options.var=='MjjExtended': 
+	H.GetYaxis().SetTitle("d#sigma/dm^{jj}")
+	H.GetXaxis().SetTitle("m^{jj}")
+elif options.var=='ZeppExtended': 
+	H.GetYaxis().SetTitle("d#sigma/dZepp")
+	H.GetXaxis().SetTitle("Zepp")
+elif options.var=='dEtajjExtended': 
+	H.GetYaxis().SetTitle("d#sigma/d#eta^{jj}")
+	H.GetXaxis().SetTitle("#eta^{jj}")
+elif options.var=='dPhijjExtended': 
+	H.GetYaxis().SetTitle("d#sigma/d#phi^{jj}")
+	H.GetXaxis().SetTitle("#phi^{jj}")
+elif options.var=='dPhiggjjExtended': 
+	H.GetYaxis().SetTitle("d#sigma/d#phi^{H,gg}")
+	H.GetXaxis().SetTitle("#phi^{H,jj}")
+
+
 HExp.SetLineColor(ROOT.kRed)
 HExp.SetLineWidth(2)
 HExp.Draw("HIST SAME")
@@ -159,7 +220,19 @@ try:	MuRS=getMu(nBins_,dir_,"RecoScanStat%s"%ExpStr,1)[0]
 except: MuRS=None
 
 
-h=ROOT.TH2D("axis","axis",nBins_,0,nBins_,100,-1,3)
+max_mu=3
+min_mu=-1
+
+
+for iBin in range(0,nBins_):
+	mu=MuU[iBin][0]
+	max_mu=max(mu*1.1,max_mu)
+	min_mu=min(mu*1.1,min_mu)
+	mu=MuR[iBin][0]
+	max_mu=max(mu*1.1,max_mu)
+	min_mu=min(mu*1.1,min_mu)
+
+h=ROOT.TH2D("axis","axis",nBins_,0,nBins_,100,min_mu,max_mu)
 h.GetYaxis().SetTitle("#mu")
 h_MuU =ROOT.TGraphAsymmErrors()
 h_MuU.SetName("muU")
@@ -220,7 +293,7 @@ print >>MuFile,"%%\\hline"
 print >>MuFile,"%%\\end{tabular}"
 if options.unblind:	print >>MuFile,"%%%%\\caption{Observed signal-strength stat-only for %s.}"%(options.var)
 else:			print >>MuFile,"%%%%\\caption{Expected signal-strength stat-only for %s.}"%(options.var)
-print >>MuFile,"\\end{table}"
+print >>MuFile,"%%\\end{table}"
 
 print >>MuFile
 #Style

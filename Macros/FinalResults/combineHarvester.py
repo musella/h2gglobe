@@ -69,6 +69,7 @@ def getVariableBinsFromWs(var,wsFileName,verbose=True):
 	''' Get the binning from the ws directly
 		inside each ws (sig/data/multipdf/sigfit) there is a TMacro with the content of the corresponding loaded dat file
 	'''
+	if var=='Fiducial': var='CosThetaStarMerged'
 	import ROOT
 	wsFile = ROOT.TFile.Open(wsFileName)
 	if wsFile == None : print "ws %s not found !!!"%wsFileName
@@ -673,7 +674,6 @@ def writeMultiDimFit(method=None,wsOnly=False):
 		makeNoGlobCard()
 	if not opts.skipWorkspace:
 		datacardname = os.path.basename(opts.datacard).replace('.txt','')
-		print 'Creating workspace for %s...'%method
 		in_datacard=os.path.abspath(opts.datacard)
 		out_datacard=os.path.abspath(opts.datacard).replace('.txt',method+'.root')
 		if opts.freezeAll:
@@ -860,7 +860,7 @@ def configure(config_line):
 		if option == "expected": opts.expected = 1
 	if opts.var and opts.var != "":
 		wsFile=getFilesFromDatacard(opts.datacard).split(',')[0]  # and take the first ws
-		(tmp_nBins,tmp_histBins,tmp_jooa)=getVariableBinsFromWs(opts.var,wsFile,verbose=True)
+		(tmp_nbins,tmp_histBins,tmp_jooa)=getVariableBinsFromWs(opts.var,wsFile,verbose=True)
 		#(tmp_nbins,tmp_histbins,tmp_jooa)=getVariableBins(opts.var,verbose=True)
 		if tmp_jooa:tmp_nbins+=1
 		opts.nBins=tmp_nbins

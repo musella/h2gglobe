@@ -109,6 +109,11 @@ def getInterpolation(x=[1,2,3],y=[1,2,3],type='min',value=0.5):
 	##  a21 a22 a23
 	##  a31 a32 a33
 	Unity=[1,1,1]
+
+	epsilon=0.001
+	if abs(x[0]-x[1])<epsilon or abs(x[0]-x[2])<epsilon or abs(x[1]-x[2])<epsilon: 
+		print "Interpolation: two x are closer than",epsilon
+		raise "Degenerate Error"
 	xSquare=[ xx*xx for xx in x ] 
 
 	# | x 1 y | / | x**2 + x + 1 |
@@ -166,8 +171,6 @@ def getMu(nBins=6,dir="jobs",File="UnfoldScanExp",sigma=1,Interpolate=True):
 			e2= max(valuesForErrors)
 		except ValueError: e1=e2=-1
 
-		#print "(",x,",",y," - ",e1,",",e2,")"
-
 		if Interpolate:	
 			#remove duplicates
 			values=list(set(values))
@@ -179,9 +182,16 @@ def getMu(nBins=6,dir="jobs",File="UnfoldScanExp",sigma=1,Interpolate=True):
 				if yi<ymin:
 					ymin=yi
 					#assuming i-1,i+1 exists, and sorted otherwise far from min
-					xI=(values[i][0],values[i-1][0],values[i+1][0])
-					yI=(values[i][1],values[i-1][1],values[i+1][1])
+					try:
+					   xI=(values[i][0],values[i-1][0],values[i+1][0])
+					   yI=(values[i][1],values[i-1][1],values[i+1][1])
+					except:
+					   print "i-1 or i+1 does not exist"
+					   xI=None # this will raise an exception in interpolation
+					   yI=None
 					#print "i=",i,"xI=",xI,"yI=",yI
+			print "Min: xI=",xI ##DEBUG
+			print "Min: yI=",yI ##DEBUG
 			#print "--- min ---"
 			try:
 				(x,y)=getInterpolation(xI,yI,'min')
@@ -205,6 +215,8 @@ def getMu(nBins=6,dir="jobs",File="UnfoldScanExp",sigma=1,Interpolate=True):
 					   Ifailed=False
 					except:
 					   Ifailed=True
+			print "E1: xI=",xI ##DEBUG
+			print "E1: yI=",yI ##DEBUG
 			if Ifailed:
 				print "->Interpolation failed"
 			Ifailed=False
@@ -219,10 +231,14 @@ def getMu(nBins=6,dir="jobs",File="UnfoldScanExp",sigma=1,Interpolate=True):
 					   Ifailed=False
 					except:
 					   Ifailed=True
+			print "E2: xI=",xI ##DEBUG
+			print "E2: yI=",yI ##DEBUG
+
 			if Ifailed:
 				print "->Interpolation failed"
+				return getMu(nBins,dir,File,sigma,Interpolate=False)
 
-		#print "-> (",x,",",y," - ",e1,",",e2,")"
+		print "I -> (",x,",",y," - ",e1,",",e2,")" ##DEBUG
 		
 		#######
 		Mu.append( (x,e1,e2) )
@@ -252,6 +268,7 @@ def DrawNLL(dir="jobs",nBins=6,File="UnfoldScanExp"):
 			g.Draw("AL")	
 			g.GetYaxis().SetTitle("#Delta NNL");
 			g.GetXaxis().SetTitle("#mu");
+			g.GetYaxis().SetRangeUser(0,5)
 		else: g.Draw("L SAME")
 		L.AddEntry(g,"Bin%d"%iG,"F")
 	

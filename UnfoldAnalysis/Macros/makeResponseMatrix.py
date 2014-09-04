@@ -10,6 +10,7 @@ parser.add_option("-b","--nBin"  ,dest='nBin' ,type='int',help="number of Bins a
 parser.add_option("-m","--mass"  ,dest='mass' ,type='float',help="Mass. mass=%default",default=125)
 parser.add_option("-o","--out"  ,dest='out' ,type='string',help="Output File Name=%default",default="matrixes.pdf")
 parser.add_option("-k","--isBinned"  ,dest='isBinned' ,action='store_true',help="isBinned. default=%default",default=False)
+parser.add_option("","--batch"  ,dest='batch' ,action='store_true',help="Batch",default=False)
 
 (options,args)=parser.parse_args()
 
@@ -34,6 +35,7 @@ fileName=args[0]
 
 sys.argv=[]
 import ROOT
+if options.batch: ROOT.gROOT.SetBatch()
 
 print " -> Importing Combine Library <- "
 ROOT.gSystem.Load("libHiggsAnalysisCombinedLimit.so")
@@ -50,9 +52,9 @@ def ConstructMatrix(ws,nBin,mod,m,isBinned=False):
 
 	if not isBinned:
 		mass_=ws.var("MH")
-		mass2_=ws.var("MH_SM")
+		#mass2_=ws.var("MH_SM")
 		mass_.setVal(m)
-		mass2_.setVal(m)
+		#mass2_.setVal(m)
 		for iBin in range(0,nBin):
 		   cat=mod*nBin + iBin	
 		   for jBin in range(0,nBin):
