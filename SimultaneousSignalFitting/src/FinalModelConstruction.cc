@@ -67,30 +67,35 @@ FinalModelConstruction::FinalModelConstruction(RooRealVar *massVar, RooRealVar *
     xsSplines.insert(pair<string,RooSpline1D*>(procs[i],xsSpline));
   }
   
- //Insert a crossSection Tot  = ggh + wh + zh + tth + vbf
-  {
-  string procsAll[5] = {"ggh","vbf","wh","zh","tth"};
-  string procTot="tot";
-  TGraph *xsGraphAll;
-  for( int i=0;i<5;i++){
-	  TGraph *xsGraph = norm->GetSigmaGraph(procs[i].c_str());
-	  if(i==0) xsGraphAll=xsGraph;
-	  else {//add y
-		  int nPoints=xsGraphAll->GetN();
-		  for(int iP=0;iP<nPoints;iP++)
-			  {
-				  double x,y;
-				xsGraphAll->GetPoint(iP,x,y);  
-				y+=xsGraph->Eval(x);
-				xsGraphAll->SetPoint(iP,x,y);
-			  }
-	  	}
-  	}
-   RooSpline1D *xsSpline = graphToSpline(Form("fxs_%s_%dTeV",procTot.c_str(),sqrts_),xsGraphAll);
-   xsSplines.insert(pair<string,RooSpline1D*>(procTot,xsSpline));
-  }		
-	  
+  //Insert a crossSection Tot  = ggh + wh + zh + tth + vbf
+  /// {
+  /// string procsSM[5] = {"ggh","vbf","wh","zh","tth"};
+  /// string procTot="tot";
+  /// TGraph *xsGraphAll;
+  /// for( int i=0;i<5;i++){
+  /// 	  TGraph *xsGraph = norm->GetSigmaGraph(procsSM[i].c_str());
+  /// 	  if(i==0) xsGraphAll=xsGraph;
+  /// 	  else {//add y
+  /// 		  int nPoints=xsGraphAll->GetN();
+  /// 		  for(int iP=0;iP<nPoints;iP++)
+  /// 			  {
+  /// 				  double x,y;
+  /// 				xsGraphAll->GetPoint(iP,x,y);  
+  /// 				y+=xsGraph->Eval(x);
+  /// 				xsGraphAll->SetPoint(iP,x,y);
+  /// 			  }
+  /// 	  	}
+  /// 	}
+  ///   
+  ///  RooSpline1D *xsSpline = graphToSpline(Form("fxs_%s_%dTeV",procTot.c_str(),sqrts_),xsGraphAll);
+  ///  xsSplines.insert(pair<string,RooSpline1D*>(procTot,xsSpline));
+  /// }		
 
+  string procTot="tot";
+  TGraph *xsGraphAll = norm->GetSigmaGraph("sm");
+  RooSpline1D *xsSpline = graphToSpline(Form("fxs_%s_%dTeV",procTot.c_str(),sqrts_),xsGraphAll);
+  xsSplines.insert(pair<string,RooSpline1D*>(procTot,xsSpline));
+  
   vector<string> files;
   split( files, systematicsFileName, boost::is_any_of(",") );
   for(vector<string>::iterator fi=files.begin(); fi!=files.end(); ++fi ) {
