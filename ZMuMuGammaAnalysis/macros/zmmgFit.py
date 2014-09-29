@@ -5,6 +5,7 @@ from optparse import OptionParser, make_option
 
 from copy import copy
 from pprint import pprint
+import csv
 
 # ------------------------------------------------------------------------------------------
 class ZmmgApp(PyRApp):
@@ -43,6 +44,10 @@ class ZmmgApp(PyRApp):
                         action="append", dest="observable",
                         default="CMS_hgg_mass",
                         ),
+            make_option("--scale-unc",
+                        action="store", dest="scale_unc", type="string",
+                        default=None,
+                        ),
             ]
                                     )
 
@@ -55,13 +60,16 @@ class ZmmgApp(PyRApp):
         self.fitCalib_  = {}
         self.calibPdfs_ = {}
         self.results_   = []
+        self.nuisParams_ = []
+        self.scaleUnc_ = {}
+        self.scaleNuis_ = None
         
     def getCatName(self,icat, labels=None):
         if labels:
             return labels[icat]
         return "cat%d" % icat
 
-    def readDatasets(self,name,group,nsig):
+    def readDatasets(self,name,group,igroup,nsig):
         
         self.cat_.defineType("%s_data" % name)
         self.cat_.defineType("%s_mc" % name)
@@ -75,11 +83,12 @@ class ZmmgApp(PyRApp):
             elif ishift < 0:
                 shift = "_shift_down%d" % -ishift
             mc[ishift] = ROOT.RooDataSet("mc_%s%s" % (name, shift), "mc_%s%s" % (name, shift), ROOT.RooArgSet(self.obs_) )
-            
+
+        scaleUnc = { nuis.GetName() : 0. for nuis in self.scaleNuis_ }
         for cat in group:
             catdata = self.ws_.data("data_mass_cat%d" % cat)
             data.append(catdata)
-
+            
             for ishift in range(-nsig,nsig+1):
                 label = ""
                 if ishift > 0:
@@ -87,27 +96,33 @@ class ZmmgApp(PyRApp):
                 elif ishift < 0:
                     label = "_E_scaleDown%02d_sigma" % -ishift
                 catmc   = self.ws_.data("sig_dymm_mass_m90_cat%d%s" % (cat,label))
+                if ishift == 0:
+                    for nu in self.scaleNuis_:
+                        scaleUnc[nu.GetName()] += catmc.sumEntries()*self.scaleUnc_[cat][nu.GetName()]
                 
                 mc[ishift].append(catmc)
+        
+        for nu in self.scaleNuis_:
+            scaleUnc[nu.GetName()] /= mc[0].sumEntries()
+        self.scaleUnc_[ self.getCatName(igroup) ] = scaleUnc
+            
         self.ws_.rooImport(data)
         for key,val in mc.iteritems():
             self.ws_.rooImport(val)
             
         self.datasets_[ name ] = { "data" : data, "mc" : mc }
 
-    def buildPdf(self,cat,label,param=None,values=None,extra=None):
+    def buildPdf(self,cat,label,param=None,values=None,extra=[]):
 
         name = "%s_%s" % (cat, label)
 
         lmbda = self.ws_.factory("lmbda_%s[0.,-10,0]" % name)
         if param:
             deltaEg = self.ws_.factory("deltaEg_%s[0.,-1.e-1,1.e-1]" % name)
-            if extra:
-                lst = ROOT.RooArgList(deltaEg,*extra)
-            else:
-                lst = ROOT.RooArgList(deltaEg)
+            lst = ROOT.RooArgList()
+            for var in [deltaEg]+extra: lst.add(var)
             mu  = ROOT.RooFormulaVar("mu_%s" % name ,param, lst)
-            ## mu.Print()
+            mu.Print()
             self.ws_.rooImport(mu)
         else:
             mu = self.ws_.factory("mu_%s[1.,0.9,1.1]" % name)
@@ -170,8 +185,19 @@ class ZmmgApp(PyRApp):
     def plotNll(self,name,var,logl):
         val = var.getVal()
         err = var.getError()
-        frame = var.frame(val-2.*err,val+2*err)
+        frame = var.frame(val-2.*err,val+2*err,50)
+
+        for nuis in self.nuisParams_+self.scaleNuis_:
+            nuis.setConstant(True)
+        logl.plotOn(frame,RooFit.ShiftToZero(),RooFit.LineStyle(ROOT.kDashed))
+
+        for nuis in self.nuisParams_:
+            nuis.setConstant(False)
         logl.plotOn(frame,RooFit.ShiftToZero())
+
+        for nuis in self.scaleNuis_:
+            nuis.setConstant(False)
+        logl.plotOn(frame,RooFit.ShiftToZero(),RooFit.LineColor(ROOT.kRed))
         
         canv = ROOT.TCanvas("fit_%s" % name,"fit_%s" % name)
         canv.cd()
@@ -180,7 +206,15 @@ class ZmmgApp(PyRApp):
         self.keep( [canv,frame] )
 
         return frame.getObject(int(frame.numItems()-1))
-                
+
+    def addNuis(self,name,val=None,formula=None,lst=None,offset=-1):
+        nu = self.ws_.factory("%s[0]" % name)
+        if val:
+            lst.append(nu)
+            formula.append( "%1.4g*@%d" % ( val,len(lst)+offset ) )
+            print( formula )
+        return nu
+    
     def calibMcFits(self,cat,nsig,step):
         pdf = self.buildPdf(cat,"mc")
 
@@ -236,8 +270,18 @@ class ZmmgApp(PyRApp):
         mcDeps.Print()
         deltaEgMC = mcDeps["deltaEg_%s_%s" % (cat,"calib_mc")]
         
-        self.calibPdfs_[cat]["data"] = self.buildPdf(cat,"calib_data","%1.6g + (@0+@1)*%1.3g" % (calib.GetParameter(0), calib.GetParameter(1)), start_from,
-                                                     [deltaEgMC]
+        ### self.calibPdfs_[cat]["data"] = self.buildPdf(cat,"calib_data","%1.6g + (@0+@1)*%1.3g" % (calib.GetParameter(0), calib.GetParameter(1)), start_from,
+        ###                                              [deltaEgMC]
+        ###                                              )
+        extra = [deltaEgMC]
+        form = ["+@1"]
+        self.nuisParams_.append(self.addNuis("nuisShape",1.5e-3,form,extra,0))
+        for nu in self.scaleNuis_:
+            self.addNuis(nu.GetName(),self.scaleUnc_[cat][nu.GetName()],form,extra,0)
+            
+        self.calibPdfs_[cat]["data"] = self.buildPdf(cat,"calib_data","%1.6g +%1.3g*(@0%s)" % (calib.GetParameter(0), calib.GetParameter(1), "+".join(form)),
+                                                     start_from,
+                                                     extra
                                                      )
         ### self.calibPdfs_[cat] = { "mc" : self.buildPdf(cat,"calib_mc",values=start_from ),
         ###                          "data" : self.buildPdf(cat,"calib_data",values=start_from )
@@ -250,7 +294,7 @@ class ZmmgApp(PyRApp):
 
         paramsData = pdfs["data"].getDependents(self.ws_.allVars())
         paramsMC   = pdfs["mc"].getDependents(self.ws_.allVars())
-
+        
         fitOpts = [RooFit.Strategy(2),RooFit.PrintLevel(-1)]
         deltaEgData  = paramsData["deltaEg_%s_%s" % (cat,"calib_data") ]
         sigma0Data   = paramsData["sigma0_%s_%s" % (cat,"calib_data") ]
@@ -285,6 +329,13 @@ class ZmmgApp(PyRApp):
         ### 
         ### self.results_[cat].extend( [ (deltaEgData.getVal(),deltaEgData.getError()), (deltaEgMC.getVal(),deltaEgMC.getError()) ] )
 
+        constraints = ROOT.RooArgSet()
+        for nuis in self.nuisParams_+self.scaleNuis_:
+            name = nuis.GetName()
+            constraints.add( self.ws_.factory("Gaussian::gauss_%(name)s(%(name)s,0.,1.)" % {"name" : name } ) )
+            nuis.setConstant(False)
+            nuis.setVal(0.)
+            
         simul = ROOT.RooSimultaneous("model_%s" % cat, "model_%s" % cat, self.cat_)
         simul.addPdf(pdfs["data"],"%s_data" % cat)
         simul.addPdf(pdfs["mc"],"%s_mc" % cat)
@@ -297,13 +348,18 @@ class ZmmgApp(PyRApp):
                                    RooFit.Import("%s_mc"  % cat,self.datasets_[cat]["mc"][0]),
                                    )
 
-        nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False))
+        simul.getDependents(self.ws_.allVars()).Print("V")
+        if constraints.getSize() > 0:
+            nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False), RooFit.ExternalConstraints(constraints))
+        else:
+            nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False))
         minim = ROOT.RooMinimizer(nll)
         minim.setPrintLevel(-1)
         minim.setStrategy(2)
 
         minim.migrad()
         minim.minos()
+        simul.getDependents(self.ws_.allVars()).Print("V")
 
         pll = nll.createProfile(ROOT.RooArgSet(deltaEgData))
         self.keep( [simul,combData] )
@@ -332,6 +388,25 @@ class ZmmgApp(PyRApp):
         self.cat_ = ROOT.RooCategory("zmmgCategory","Zmmg Category")
         self.ws_.rooImport(self.cat_)
 
+        if options.scale_unc:
+            reader = csv.DictReader(open(options.scale_unc))
+            for row in reader:
+                srow = {}
+                for field,val in row.iteritems():
+                    typ = float
+                    if "cat" in field:
+                        typ = int
+                    srow[ field.lstrip(" ").rstrip(" ") ] = typ(val)
+                self.scaleUnc_[ srow["cat"] ] = srow
+                if not self.scaleNuis_:
+                    self.scaleNuis_ = []
+                    for n in srow.keys():
+                        if n!="cat" and n!="tot":
+                            self.scaleNuis_.append( self.addNuis(n) )
+                    ## self.scaleNuis_ = [ n for n in srow.keys() if n!="cat" and n!="tot" ]
+        else:
+            self.scaleNuis_ = []
+            
         if not options.verbose:
             ROOT.RooMsgService.instance().setGlobalKillBelow(RooFit.WARNING)
         
@@ -344,7 +419,7 @@ class ZmmgApp(PyRApp):
         for igroup,group in enumerate(categories):
             catName = self.getCatName(igroup,options.labels)
 
-            self.readDatasets(catName,group,options.nsigma)
+            self.readDatasets(catName,group,igroup,options.nsigma)
             self.calibMcFits(catName,options.nsigma,options.step)
             
             self.runFits(catName)
