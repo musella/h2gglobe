@@ -39,6 +39,8 @@ private:
   
   void fillPlots(int cat, float weight, LoopAll &l, TLorentzVector & leadMu, TLorentzVector & subMu, TLorentzVector & diMu, 
 		 int iselPho, TLorentzVector & selPho, TLorentzVector & mmg);
+  void fillTree(float evweight, LoopAll &l, TLorentzVector & leadMu, TLorentzVector & subMu, TLorentzVector & diMu, 
+		int iselPho, TLorentzVector & selPho, TLorentzVector & mmg);
 
   bool muonSelection (LoopAll& l, int iMu); 
   bool photonSelection (TLorentzVector& p4, TVector3 & sc);
@@ -62,7 +64,16 @@ private:
   
   float phoPtMin;
   float dEtaMin;
-  bool applyPhoPresel;
+  float dRMin;
+  float dRMax;
+  float muIsoMax;
+  float leadMuPtMin;
+  float subMuPtMin;
+  float diMuMassMin;
+  float farMuPtMin;
+  float massSumMax;
+  
+  bool doFsr,applyPhoPresel,useSvariable;
 
 };
 

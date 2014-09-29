@@ -69,8 +69,10 @@ void StatAnalysis::Term(LoopAll& l)
     std::string outputfilename = (std::string) l.histFileName;
     // Make Fits to the data-sets and systematic sets
     std::string postfix=Form("_%dTeV",l.sqrtS);
-    l.rooContainer->FitToData("data_pol_model"+postfix,"data_mass");  // Fit to full range of dataset
-
+    if( ! l.is_subjob ) { 
+	l.rooContainer->FitToData("data_pol_model"+postfix,"data_mass");  // Fit to full range of dataset
+    }
+    
     //    l.rooContainer->WriteSpecificCategoryDataCards(outputfilename,"data_mass","sig_mass","data_pol_model");
     //    l.rooContainer->WriteDataCard(outputfilename,"data_mass","sig_mass","data_pol_model");
     // mode 0 as above, 1 if want to bin in sub range from fit,

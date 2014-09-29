@@ -5,7 +5,8 @@ import sys, os
 import array
 from math import sqrt, fabs
 
-from zmmgPlot import ytitle
+def ytitle(h,tit):
+    h.GetYaxis().SetTitle( (tit % { "binw" : h.GetBinWidth(0), "xtitle" : h.GetXaxis().GetTitle() }).replace("(GeV)","") )
 
 objs = []
 
@@ -17,7 +18,6 @@ def getCatName(icat, labels=None):
 def setStat(h,prev=None,vert=-1,horiz=0.):
     ROOT.gPad.Update()
     st = h.FindObject('stats')
-    print st, h, prev
     st.SetLineColor(h.GetLineColor())
     st.SetTextColor(h.GetLineColor())
 
@@ -42,13 +42,22 @@ def trMean(hist,alpha):
 
     hist.GetQuantiles(2,quantiles,probs)
 
-    print quantiles, probs
+    print hist.GetName(), quantiles, probs
     
     limits = [ hist.GetXaxis().FindBin(q) for q in quantiles ]
     hist.GetXaxis().SetRange(*limits)
     
     mean = hist.GetMean()
     err  = hist.GetMeanError() ## hist.GetRMS() / ( ( 1. - beta )*sqrt( hist.Integral() ) )
+
+    if( alpha != 1. ):
+        line0 = ROOT.TLine(quantiles[0],hist.GetYaxis().GetXmin(),quantiles[0],hist.GetYaxis().GetXmax())
+        line1 = ROOT.TLine(quantiles[1],hist.GetYaxis().GetXmin(),quantiles[1],hist.GetYaxis().GetXmax())
+        objs.extend( [line0,line1] )
+        line0.SetLineColor(hist.GetLineColor())
+        line1.SetLineColor(hist.GetLineColor())
+        hist.GetListOfFunctions().Add(line0)
+        hist.GetListOfFunctions().Add(line1)
         
     hist.GetXaxis().SetRange()
     return mean,err
@@ -73,21 +82,24 @@ def getMean(h,method):
     else:
         x,xerr = method(h)
 
-    return x,xerr
+    return 100.*(x-1.),100.*xerr
 
-def recFit(h):
-    f = ROOT.TF1("f","gaus",80.,100.)
-    oldmean = 90.
-    oldsigma = 10.
+def recFit(h,start=1.,sigma=1.):
     
-    h.Fit(f,"QRN")
+    oldmean = start
+    oldsigma = sigma
+    f = ROOT.TF1("f","gaus",start-sigma,start+sigma)
+    ## oldmean = 90.
+    ## oldsigma = 10.
+    
+    h.Fit(f,"LQRN")
     errmean  = f.GetParError(1)
     mean  = f.GetParameter(1)
     sigma = f.GetParameter(2)*1
     iter = 0
-    while iter < 5 or fabs(1. - mean/oldmean) > 0.005:
+    while iter < 5 or ( fabs(1. - mean/oldmean) > 0.005 and iter < 30 ):
         g = ROOT.TF1("g","gaus",mean-sigma,mean+sigma)
-        h.Fit(g,"QRN")
+        h.Fit(g,"LQRN")
         oldmean = float(mean)
         oldsigma = float(sigma)
         errmean  = g.GetParError(1)
@@ -100,7 +112,7 @@ def recFit(h):
     fcanv.cd()
     g = ROOT.TF1("final_fit_%s" % h.GetName(),"gaus",mean-sigma,mean+sigma)
     g.SetLineColor(h.GetLineColor())
-    h.Fit(g,"QRO")
+    h.Fit(g,"LQRO")
     ## h.GetListOfFunctions().Add(g.Clone())
     h.Draw()
     g.Draw("same")
@@ -148,7 +160,9 @@ def main(options,args):
     ## methods = [1,0.95,0.8,0.683,0.5,0.4,0.3,0.2]
     ## methods = [recFit,0.683,(85.,100.),(80.,100.),(86.,96.),(88.,94.)]
     ## methods = [recFit,1.,0.683,(85.,97.),(86.,96.),(88,94),(89,93),(90,92)]
-    methods = [recFit]
+    ## methods = [recFit]
+    ## methods = [recFit,1.,0.95,0.8,0.683,0.5]
+    methods = [1.,0.95,recFit,]
     if len(options.groups) > 0:
         categories = [ [int(t) for t in g.split(",")] for g in options.groups ]
     else:
@@ -191,7 +205,10 @@ def main(options,args):
             name = "mVsDeltaE_%s" % toStr(method)
                 
             data = ( getMean(hdata,method), getMean(hmcs[0],method) )
-            res[method] = ( buildCalib(hmcs,name,";m_{ll#gamma} (GeV/c^{2});#Delta E_{#gamma} / E_{#gamma} (#times 10^{-2})", method ),
+            ### res[method] = ( buildCalib(hmcs,name,";m_{ll#gamma} (GeV/c^{2});#Delta E_{#gamma} / E_{#gamma} (#times 10^{-2})", method ),
+            ###                 data )
+            ## data = ( (data[0][0]-1., data[0][1]), (data[1][0]-1., data[1][1]) )
+            res[method] = ( buildCalib(hmcs,name,";#delta s_{#gamma} (#times 10^{-2});#Delta E_{#gamma} / E_{#gamma} (#times 10^{-2})", method ),
                             data )
 
         ROOT.gStyle.SetOptFit(0)
@@ -238,6 +255,7 @@ def main(options,args):
 
     meas = {}
     out = open("results.txt","w+")
+    out.write(",".rjust(25)+"data,".rjust(13)+"mc,".rjust(13)+"data-mc,".rjust(13)+"err,".rjust(13)+"(data-mc)/err,".rjust(13)+"scale,".rjust(13)+"eScale,".rjust(13)+"eScaleP,".rjust(13)+"eScaleM,".rjust(13)+"\n")
     for method in methods:
         scales = []
         name = "results_%s" % toStr(method)
@@ -250,13 +268,13 @@ def main(options,args):
             ROOT.gPad.SetGridy()
             calib, data = res[method]
             data,mc = data
-            calib.Fit("pol1","W+")
+            calib.Fit("pol1","QW+")
             func = calib.GetListOfFunctions().At(0)
             scale = func.Eval(data[0])
             err = sqrt(data[1]**2 + mc[1]**2)
             scaleP = func.Eval(data[0]+err)
             scaleM = func.Eval(data[0]-err)
-            scales.append( (data[0],mc[0],100.*(data[0]/mc[0]-1.),100.*(err/mc[0]),0.5*(scaleP-scaleM),(data[0]-mc[0])/err,scale,scaleM,scaleP) )
+            scales.append( (data[0],mc[0],(data[0]-mc[0]),err,(data[0]-mc[0])/err,scale,0.5*(scaleP-scaleM),scale-scaleM,scaleP-scale) )
             ip = calib.GetN()
             calib.SetPoint( ip, data[0], scale )
             calib.SetPointError( ip, err, 0.5*(scaleP-scaleM) )
@@ -264,13 +282,13 @@ def main(options,args):
             calib.Draw("ap")
         for fmt in "C","png","pdf":
             canv.SaveAs("%s.%s" % (canv.GetName(),fmt) )
-            
+
         out.write( "Method: %s\n" % toStr(method ) )
         for icat, scale in enumerate(scales):
             catName = getCatName(icat,options.labels)
-            out.write(("cat: %s " % catName).ljust(25) )
+            out.write(("cat: %s ," % catName).ljust(25) )
             for num in scale:
-                out.write(("%.4g" % num).ljust(10) )
+                out.write(("%.4g," % num).rjust(13) )
             out.write("\n")
     out.close()
     out = open("results.txt")
@@ -289,7 +307,7 @@ if __name__ == "__main__":
                     ),
         make_option("-n", "--ncat",
                     action="store", type="int", dest="ncat",
-                    default=8,
+                    default=12,
                     ),
         make_option("-g", "--group", 
                     action="append",  dest="groups",
@@ -309,16 +327,11 @@ if __name__ == "__main__":
     print options
     if len(options.labels) == 0:
         options.labels = None
-    ## options.groups.extend( [ "0,1", "2,3", "4,5", "6,7" ] )
-    ## options.groups.extend( [ "0,4", "1,5", "2,6", "3,7" ] )
-    ## options.groups.extend( [ "0,1,4,5", "2,3,6,7" ] )
 
     try:
         os.mkdir(options.outdir)
     except:
         pass
-
-    print options
     
     sys.argv.append("-b")
     import ROOT
