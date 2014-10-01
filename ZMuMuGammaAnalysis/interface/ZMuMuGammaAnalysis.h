@@ -25,6 +25,9 @@ class ZMuMuGammaAnalysis : public  StatAnalysis
 	  int nvtx;
 	  double idmva;
 	  int ciclevel;
+	  double photonRegE;
+	  double leadMuIso, subMuIso;
+	  int leadMuGsf, subMuGsf;
   };
   
 
@@ -37,9 +40,9 @@ private:
 			    float syst_shift=0., bool skipSelection=false,
 			    BaseGenLevelSmearer *genSys=0, BaseSmearer *phoSys=0, BaseDiPhotonSmearer * diPhoSys=0); 
   
-  void fillPlots(int cat, float weight, LoopAll &l, TLorentzVector & leadMu, TLorentzVector & subMu, TLorentzVector & diMu, 
+  void fillPlots(int cat, float weight, LoopAll &l, int ileadMu, int isubMu, TLorentzVector & leadMu, TLorentzVector & subMu, TLorentzVector & diMu, 
 		 int iselPho, TLorentzVector & selPho, TLorentzVector & mmg);
-  void fillTree(float evweight, LoopAll &l, TLorentzVector & leadMu, TLorentzVector & subMu, TLorentzVector & diMu, 
+  void fillTree(float evweight, LoopAll &l, int ileadMu, int isubMu, TLorentzVector & leadMu, TLorentzVector & subMu, TLorentzVector & diMu, 
 		int iselPho, TLorentzVector & selPho, TLorentzVector & mmg);
 
   bool muonSelection (LoopAll& l, int iMu); 
@@ -66,6 +69,7 @@ private:
   float dEtaMin;
   float dRMin;
   float dRMax;
+  bool  applyMuGsfVeto;
   float muIsoMax;
   float leadMuPtMin;
   float subMuPtMin;

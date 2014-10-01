@@ -37,12 +37,20 @@ class ZmmgApp(PyRApp):
                         default="",
                         ),
             make_option("-w", "--ws-name",
-                        action="append", dest="ws_name",
+                        action="store", dest="ws_name",
                         default="cms_hgg_workspace",
                         ),
+            make_option("-W","--write-ws",
+                        action="store", dest="write_ws", type="string",
+                        default=None,
+                        ),
             make_option("-o", "--observable",
-                        action="append", dest="observable",
+                        action="store", dest="observable",
                         default="CMS_hgg_mass",
+                        ),
+            make_option("--obs-scale",
+                        action="store", dest="obs_scale", type=float,
+                        default=1.,
                         ),
             make_option("--scale-unc",
                         action="store", dest="scale_unc", type="string",
@@ -53,9 +61,12 @@ class ZmmgApp(PyRApp):
 
         global ROOT, RooFit, style_utils
         import ROOT
+        ## ROOT.gSystem.SetIncludePath("-I$ROOTSYS/include -I$ROOFITSYS/include")
+        ## ROOT.gSystem.Load("libRooFitCore")
+        ## ROOT.gInterpreter.GenerateDictionary("std::map<std::string, RooDataSet*>", "map;string;RooDataSet.h")
         from ROOT import RooFit as RooFit
         import pyrapp.style_utils as style_utils
-
+        
         self.datasets_  = {}
         self.fitCalib_  = {}
         self.calibPdfs_ = {}
@@ -115,8 +126,8 @@ class ZmmgApp(PyRApp):
     def buildPdf(self,cat,label,param=None,values=None,extra=[]):
 
         name = "%s_%s" % (cat, label)
-
-        lmbda = self.ws_.factory("lmbda_%s[0.,-10,0]" % name)
+        trObs=self.trObs_
+        lmbda = self.ws_.factory("lmbda_%s[0.,-10,2]" % name)
         if param:
             deltaEg = self.ws_.factory("deltaEg_%s[0.,-1.e-1,1.e-1]" % name)
             lst = ROOT.RooArgList()
@@ -126,17 +137,19 @@ class ZmmgApp(PyRApp):
             self.ws_.rooImport(mu)
         else:
             mu = self.ws_.factory("mu_%s[1.,0.9,1.1]" % name)
-	sigma0 = self.ws_.factory("sigma0_%s[2.e-2,5.e-3,2.e-1]" % name)
+	sigma0 = self.ws_.factory("sigma0_%s[2.e-2,1.e-3,2.e-1]" % name)
+        ## sigma0 = self.ws_.factory("sigma0_%s[2.e-2,5.e-3,2.e-1]" % name)
 	## sigmaL = self.ws_.factory("sigmaL_%s[2.e-2,5.e-3,1.e-1]" % name)
 	## sigmaR = self.ws_.factory("sigmaR_%s[2.e-2,5.e-3,1.e-1]" % name)
-        ## sigma0 = ROOT.RooFormulaVar("sigma0_%s" % name, "@0*(@3>@2) + @1*(@3<=@2)",ROOT.RooArgList(sigmaL,sigmaR,mu,self.obs_))
-	lst = ROOT.RooArgList(sigma0,lmbda,self.obs_)
+        ## sigma0 = ROOT.RooFormulaVar("sigma0_%s" % name, "@0*(@3>@2) + @1*(@3<=@2)",ROOT.RooArgList(sigmaL,sigmaR,mu,trObs))
+	lst = ROOT.RooArgList(sigma0,lmbda,trObs)
 	sigma = ROOT.RooFormulaVar("sigma_%s" % name ,"@0*(1+exp(@1*(1.-@2)))",lst)
-        self.ws_.rooImport(sigma)
+        self.ws_.rooImport(sigma,RooFit.RecycleConflictNodes())
         
-	width = self.ws_.factory("width_%s[3.e-2,1.e-2,2.e-1]" % name)
+	width = self.ws_.factory("width_%s[3.e-2,1.e-3,2.e-1]" % name)
+        ## width = self.ws_.factory("width_%s[3.e-2,1.e-2,2.e-1]" % name)
         shape = self.ws_.factory("Voigtian::shape_%(name)s(%(obs)s,mu_%(name)s,sigma_%(name)s,width_%(name)s)" %
-                                 { "name" : name, "obs" : self.obs_.GetName() }
+                                 { "name" : name, "obs" : trObs.GetName() }
                                  )
         
         if values:
@@ -152,7 +165,7 @@ class ZmmgApp(PyRApp):
 
     def plotFit(self,name,pdf,dataset,style):
         
-        frame = self.obs_.frame()
+        frame = self.obs_.frame(RooFit.Bins(50))
         dataset.plotOn(frame,*style)
         pdf.plotOn(frame,*style)
 
@@ -183,6 +196,7 @@ class ZmmgApp(PyRApp):
         self.keep( [canv,frame,frameResid] )
 
     def plotNll(self,name,var,logl):
+        print( "plotNll", var.GetName() )
         val = var.getVal()
         err = var.getError()
         frame = var.frame(val-2.*err,val+2*err,50)
@@ -195,9 +209,9 @@ class ZmmgApp(PyRApp):
             nuis.setConstant(False)
         logl.plotOn(frame,RooFit.ShiftToZero())
 
-        for nuis in self.scaleNuis_:
-            nuis.setConstant(False)
-        logl.plotOn(frame,RooFit.ShiftToZero(),RooFit.LineColor(ROOT.kRed))
+        ## for nuis in self.scaleNuis_:
+        ##     nuis.setConstant(False)
+        ## logl.plotOn(frame,RooFit.ShiftToZero(),RooFit.LineColor(ROOT.kRed))
         
         canv = ROOT.TCanvas("fit_%s" % name,"fit_%s" % name)
         canv.cd()
@@ -208,11 +222,12 @@ class ZmmgApp(PyRApp):
         return frame.getObject(int(frame.numItems()-1))
 
     def addNuis(self,name,val=None,formula=None,lst=None,offset=-1):
-        nu = self.ws_.factory("%s[0]" % name)
+        nu = self.ws_.factory("%s[0,-3,3]" % name)
+        nu.setConstant(True)
         if val:
             lst.append(nu)
             formula.append( "%1.4g*@%d" % ( val,len(lst)+offset ) )
-            print( formula )
+            ### print( formula )
         return nu
     
     def calibMcFits(self,cat,nsig,step):
@@ -230,10 +245,10 @@ class ZmmgApp(PyRApp):
         lmbda.setConstant(True)
         pdf.fitTo(self.datasets_[cat]["mc"][0],RooFit.PrintLevel(-1),*fitOpts)
 
+        fitOpts.append(RooFit.Strategy(2))
         mu.setConstant(False)
         pdf.fitTo(self.datasets_[cat]["mc"][0],RooFit.PrintLevel(-1),*fitOpts)
 
-        fitOpts.append(RooFit.Strategy(2))
         lmbda.setConstant(False)
         pdf.fitTo(self.datasets_[cat]["mc"][0],RooFit.PrintLevel(-1),*fitOpts)
 
@@ -248,8 +263,12 @@ class ZmmgApp(PyRApp):
         ### start_from = [ mu.getVal(), sigma0.getVal(), lmbda.getVal(), width.getVal() ]
         start_from = [ sigma0.getVal(), lmbda.getVal(), width.getVal() ]
         for ishift in range(-nsig,nsig+1):
-            if ishift == 0:
-                continue
+            ### if ishift == 0:
+            ###     continue
+            sigma0.setConstant(True)
+            lmbda .setConstant(True)
+            width .setConstant(True)
+
             pdf.fitTo(self.datasets_[cat]["mc"][ishift],RooFit.PrintLevel(-1),*fitOpts)
 
             ip = gr.GetN()
@@ -265,7 +284,11 @@ class ZmmgApp(PyRApp):
         self.keep( [canvCalib,gr] )
 
         self.calibPdfs_[cat] = {}
-        self.calibPdfs_[cat]["mc"] = self.buildPdf(cat,"calib_mc","%1.6g + @0*%1.3g" % (calib.GetParameter(0), calib.GetParameter(1)), start_from )
+        nuCalibSlope = self.addNuis("nuisCalibSlope_%s" % cat)
+        self.nuisParams_.append(nuCalibSlope)
+        extra = [nuCalibSlope]
+        self.calibPdfs_[cat]["mc"] = self.buildPdf(cat,"calib_mc","%1.6g + (%1.3g+%1.3g*@1)*@0" % (calib.GetParameter(0), calib.GetParameter(1),
+                                                                                                   calib.GetParError(1)), start_from, extra )
         mcDeps = self.calibPdfs_[cat]["mc"].getDependents(self.ws_.allVars())
         mcDeps.Print()
         deltaEgMC = mcDeps["deltaEg_%s_%s" % (cat,"calib_mc")]
@@ -275,11 +298,13 @@ class ZmmgApp(PyRApp):
         ###                                              )
         extra = [deltaEgMC]
         form = ["+@1"]
-        self.nuisParams_.append(self.addNuis("nuisShape",1.5e-3,form,extra,0))
+        self.nuisParams_.append(self.addNuis("nuisShape_%s" % cat,2.e-3,form,extra,0))
         for nu in self.scaleNuis_:
             self.addNuis(nu.GetName(),self.scaleUnc_[cat][nu.GetName()],form,extra,0)
-            
-        self.calibPdfs_[cat]["data"] = self.buildPdf(cat,"calib_data","%1.6g +%1.3g*(@0%s)" % (calib.GetParameter(0), calib.GetParameter(1), "+".join(form)),
+        extra.append( nuCalibSlope )
+        self.calibPdfs_[cat]["data"] = self.buildPdf(cat,"calib_data","%1.6g +(%1.3g+%1.3g*@%d)*(@0%s)" % (calib.GetParameter(0), calib.GetParameter(1),
+                                                                                                           calib.GetParError(1),
+                                                                                                           len(extra),"+".join(form)),
                                                      start_from,
                                                      extra
                                                      )
@@ -287,7 +312,7 @@ class ZmmgApp(PyRApp):
         ###                          "data" : self.buildPdf(cat,"calib_data",values=start_from )
         ###                          }
 
-    def runFits(self,cat):
+    def runFits(self,cat,plot=True):
 
         pdfs = self.calibPdfs_[cat]
         datasets = self.datasets_[cat]
@@ -302,40 +327,15 @@ class ZmmgApp(PyRApp):
         widthData    = paramsData["width_%s_%s" % (cat,"calib_data") ]
         deltaEgMC    = paramsMC["deltaEg_%s_%s" % (cat,"calib_mc") ]
 
-        ### self.results_[cat] = []
-        ### sigma0Data .setConstant(True)
-        ### lmbdaData  .setConstant(True)
-        ### widthData  .setConstant(True)
-        ### pdfs["data"].fitTo(self.datasets_[cat]["data"],*fitOpts)
-        ### self.results_[cat].append( (deltaEgData.getVal(),deltaEgData.getError()) )
-        ### 
-        ### sigma0Data .setConstant(False)
-        ### lmbdaData  .setConstant(False)
-        ### widthData  .setConstant(False)
-        ### pdfs["data"].fitTo(self.datasets_[cat]["data"],*fitOpts)
-        ### self.plotFit(name="scale_%s_%s"% (cat,"data"),pdf=pdfs["data"],
-        ###              dataset=self.datasets_[cat]["data"],
-        ###              style=[RooFit.MarkerColor(ROOT.kBlack),RooFit.LineColor(ROOT.kBlack)])
-        ### 
-        ### fitOpts.append( RooFit.SumW2Error(1) )
-        ### pdfs["mc"].fitTo(self.datasets_[cat]["mc"][0],*fitOpts)
-        ### 
-        ### self.plotFit(name="scale_%s_%s"% (cat,"mc"),pdf=pdfs["mc"],
-        ###              dataset=self.datasets_[cat]["mc"][0],
-        ###              style=[RooFit.MarkerColor(ROOT.kRed),RooFit.LineColor(ROOT.kRed)])
-        ### 
-        ### ## paramsData.Print("V")
-        ### ## paramsMC.Print("V")
-        ### 
-        ### self.results_[cat].extend( [ (deltaEgData.getVal(),deltaEgData.getError()), (deltaEgMC.getVal(),deltaEgMC.getError()) ] )
-
         constraints = ROOT.RooArgSet()
         for nuis in self.nuisParams_+self.scaleNuis_:
             name = nuis.GetName()
             constraints.add( self.ws_.factory("Gaussian::gauss_%(name)s(%(name)s,0.,1.)" % {"name" : name } ) )
             nuis.setConstant(False)
             nuis.setVal(0.)
-            
+
+        constraints.Print()
+        
         simul = ROOT.RooSimultaneous("model_%s" % cat, "model_%s" % cat, self.cat_)
         simul.addPdf(pdfs["data"],"%s_data" % cat)
         simul.addPdf(pdfs["mc"],"%s_mc" % cat)
@@ -364,20 +364,152 @@ class ZmmgApp(PyRApp):
         pll = nll.createProfile(ROOT.RooArgSet(deltaEgData))
         self.keep( [simul,combData] )
         
-        self.plotFit(name="scale_%s_%s"% (cat,"data"),pdf=pdfs["data"],
-                     dataset=self.datasets_[cat]["data"],
-                     style=[RooFit.MarkerColor(ROOT.kBlack),RooFit.LineColor(ROOT.kBlack)])
+        if plot:
+            self.plotFit(name="scale_%s_%s"% (cat,"data"),pdf=pdfs["data"],
+                         dataset=self.datasets_[cat]["data"],
+                         style=[RooFit.MarkerColor(ROOT.kBlack),RooFit.LineColor(ROOT.kBlack)])
+            
+            self.plotFit(name="scale_%s_%s"% (cat,"mc"),pdf=pdfs["mc"],
+                         dataset=self.datasets_[cat]["mc"][0],
+                         style=[RooFit.MarkerColor(ROOT.kRed),RooFit.LineColor(ROOT.kRed)])
+            
+            curve = self.plotNll(name="scale_%s_nll" % cat, var=deltaEgData, logl=pll )
+            nll0 = curve.Eval(0.)
+            
+            self.results_.append( (cat, deltaEgData.getVal(), deltaEgData.getErrorLo(), deltaEgData.getErrorHi(), 2.*nll0 ) )
+        
 
-        self.plotFit(name="scale_%s_%s"% (cat,"mc"),pdf=pdfs["mc"],
-                     dataset=self.datasets_[cat]["mc"][0],
-                     style=[RooFit.MarkerColor(ROOT.kRed),RooFit.LineColor(ROOT.kRed)])
+    def runSimultaneousFit(self,cats,saveTo):
+
+        simul = ROOT.RooSimultaneous("model_allcats", "model_allcats", self.cat_)
+
+        constraints = ROOT.RooArgSet()
+        for nuis in self.nuisParams_+self.scaleNuis_:
+            name = nuis.GetName()
+            constraints.add( self.ws_.factory("Gaussian::gauss_%(name)s(%(name)s,0.,1.)" % {"name" : name } ) )
+            nuis.setConstant(False)
+            nuis.setVal(0.)
+
+        ## dataImport = ROOT.RooArgList()
+        dataScales = []
+        index = RooFit.Index(self.cat_)
+        obs = ROOT.RooArgSet(self.obs_)
+        combData = None
+        for cat in cats:
+            pdfs = self.calibPdfs_[cat]
+            datasets = self.datasets_[cat]
+
+            paramsData = pdfs["data"].getDependents(self.ws_.allVars())
+            paramsMc   = pdfs["mc"].getDependents(self.ws_.allVars())
         
-        curve = self.plotNll(name="scale_%s_nll" % cat, var=deltaEgData, logl=pll )
-        nll0 = curve.Eval(0.)
+            deltaEgData  = paramsData["deltaEg_%s_%s" % (cat,"calib_data") ]
+            deltaEgMc    = paramsMc["deltaEg_%s_%s" % (cat,"calib_mc") ]
+            dataScales.append(deltaEgData)
+            
+            simul.addPdf(pdfs["data"],"%s_data" % cat)
+            simul.addPdf(pdfs["mc"],"%s_mc" % cat)
+
+            # pre-fit pdfs
+            pdfs["mc"].fitTo(self.datasets_[cat]["mc"][0],RooFit.SumW2Error(True),RooFit.Strategy(2),RooFit.PrintLevel(-1))
+            pdfs["mc"].getDependents(self.ws_.allVars()).Print("V")
+            deltaEgMc.setConstant(True)
+            pdfs["data"].fitTo(self.datasets_[cat]["data"],RooFit.Strategy(2),RooFit.PrintLevel(-1),
+                               RooFit.ExternalConstraints(constraints))
+            deltaEgMc.setConstant(False)
+            pdfs["data"].getDependents(self.ws_.allVars()).Print("V")
+            
+            if not combData:
+                combData = ROOT.RooDataSet("comb_set_allcats","comb_set_allcats", obs,
+                                      index,
+                                      RooFit.Import("%s_data"% cat,self.datasets_[cat]["data"]),
+                                      RooFit.Import("%s_mc"  % cat,self.datasets_[cat]["mc"][0]),
+                                       )
+            else:
+                catData = ROOT.RooDataSet("comb_set_%s" % cat,"comb_set_%s" % cat, obs,
+                                          index,
+                                          RooFit.Import("%s_data"% cat,self.datasets_[cat]["data"]),
+                                          RooFit.Import("%s_mc"  % cat,self.datasets_[cat]["mc"][0]),
+                                          )
+                combData.append(catData)
+
+                
+        combData.Print("V")
+        simul.getDependents(self.ws_.allVars()).Print("V")
+        if constraints.getSize() > 0:
+            nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False), RooFit.ExternalConstraints(constraints))
+        else:
+            nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False))
+        minim = ROOT.RooMinimizer(nll)
+        minim.setPrintLevel(-1)
+        minim.setStrategy(2)
+
+        minim.migrad()
+        ## dataScalesSet = ROOT.RooArgSet()
+        ## for d in dataScales:
+        ##     dataScalesSet.add(d)
+        ## minim.minos(dataScalesSet)
+
+        self.keep( [simul,combData] )
+
+        if saveTo:
+            self.ows_ = ROOT.RooWorkspace("zmmgFit","zmmgFit")
+            getattr(self.ows_,"import")(simul)
+            getattr(self.ows_,"import")(combData)
+            self.ows_.saveSnapshot("deltaEgFit",self.ows_.allVars(),True)
+            
+        simul.getDependents(self.ws_.allVars()).Print("V")
+        nllMin = nll.getVal()
+
+
+        for cat in cats:
+            pdfs = self.calibPdfs_[cat]
+            datasets = self.datasets_[cat]
+
+            self.plotFit(name="scale_simul_%s_%s"% (cat,"data"),pdf=pdfs["data"],
+                         dataset=self.datasets_[cat]["data"],
+                         style=[RooFit.MarkerColor(ROOT.kBlack),RooFit.LineColor(ROOT.kBlack)])
+            
+            self.plotFit(name="scale_simul_%s_%s"% (cat,"mc"),pdf=pdfs["mc"],
+                         dataset=self.datasets_[cat]["mc"][0],
+                         style=[RooFit.MarkerColor(ROOT.kRed),RooFit.LineColor(ROOT.kRed)])
+            
+        ### for cat,deltaEgData in zip(cats,dataScales):
+        ###     pll = nll.createProfile(ROOT.RooArgSet(deltaEgData))
+        ###     
+        ###     curve = self.plotNll(name="scale_%s_nll" % cat, var=deltaEgData, logl=pll )
+        ###     dnll0 = curve.Eval(0.)
+        ###     
+        ###     self.results_.append( (cat, deltaEgData.getVal(), deltaEgData.getErrorLo(), deltaEgData.getErrorHi(), 2.*dnll0 ) )
+        ###     ## self.results_.append( (cat, deltaEgData.getVal(), deltaEgData.getErrorLo(), deltaEgData.getErrorHi(), 1000. ) )
+
+        for deltaEgData in dataScales:
+            deltaEgData.setVal(0.)
+            deltaEgData.setConstant(True)
+            
+        simul.getDependents(self.ws_.allVars()).Print("V")
+        if constraints.getSize() > 0:
+            nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False), RooFit.ExternalConstraints(constraints))
+        else:
+            nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False))
+        minim0 = ROOT.RooMinimizer(nll)
+        minim0.setPrintLevel(-1)
+        minim0.setStrategy(2)
+
+        minim0.migrad()
+        ## minim0.minos()
+        if saveTo:
+            self.ows_.saveSnapshot("deltaEgZeroFit",self.ows_.allVars(),True)
+        dnll0 = 2.*(nll.getVal() - nllMin)
+        ndf = len(dataScales)
+        prob = ROOT.TMath.Prob(dnll0,ndf)
+        sig = ROOT.RooStats.PValueToSignificance(prob)
         
-        self.results_.append( (cat, deltaEgData.getVal(), deltaEgData.getErrorLo(), deltaEgData.getErrorHi(), 2.*nll0 ) )
+        self.results_.append( ("allcats", ndf, prob, sig, dnll0 ) )
         
-                                   
+        if saveTo:
+            self.ows_.writeToFile(saveTo,True)
+            
+
     def __call__(self,options,args):
 
         fin = self.open(options.infile)
@@ -385,6 +517,11 @@ class ZmmgApp(PyRApp):
         self.ws_ = fin.Get(options.ws_name)
         self.ws_.rooImport = lambda *args : getattr(self.ws_,"import")(*args) 
         self.obs_ = self.ws_.var(options.observable)
+        self.scaleObs_ = options.obs_scale
+        obs = ROOT.RooArgList(self.obs_)
+        self.trObs_ = ROOT.RooFormulaVar("zmmgObs","@0/%1.4g" % self.scaleObs_,obs)
+        self.ws_.rooImport(self.trObs_)
+        ## self.obs_.setRange(0.6,1.4)
         self.cat_ = ROOT.RooCategory("zmmgCategory","Zmmg Category")
         self.ws_.rooImport(self.cat_)
 
@@ -415,15 +552,18 @@ class ZmmgApp(PyRApp):
         else:
             categories = [ [i] for i in range(options.ncat) ]
         
-            
+        allcats = []    
         for igroup,group in enumerate(categories):
             catName = self.getCatName(igroup,options.labels)
 
             self.readDatasets(catName,group,igroup,options.nsigma)
             self.calibMcFits(catName,options.nsigma,options.step)
             
-            self.runFits(catName)
-
+            self.runFits(catName,True)
+            allcats.append(catName)
+            
+        self.runSimultaneousFit(allcats,options.write_ws)
+        
         ## pprint( self.results_ )
         out = open("%s/results.txt" % options.outdir,"w+")
         out.write( "category".ljust(25)+
