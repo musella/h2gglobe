@@ -1,11 +1,11 @@
 #!/bin/bash
 
-./submit_reduction.sh zmmg_data DoubleMuParked_Run2012A-22Jan2013-v1 30  &
-./submit_reduction.sh zmmg_data DoubleMuParked_Run2012B-22Jan2013-v1 200 &
+# ./submit_reduction.sh zmmg_data DoubleMuParked_Run2012A-22Jan2013-v1 30  &
+# ./submit_reduction.sh zmmg_data DoubleMuParked_Run2012B-22Jan2013-v1 200 &
 ./submit_reduction.sh zmmg_data DoubleMuParked_Run2012C-22Jan2013-v1 350 &
-./submit_reduction.sh zmmg_data DoubleMuParked_Run2012D-22Jan2013-v1 350 &
+# ./submit_reduction.sh zmmg_data DoubleMuParked_Run2012D-22Jan2013-v1 350 &
 
-./submit_reduction.sh zmmg_mc \* 450 &
+# ./submit_reduction.sh zmmg_mc \* 450 &
 
 ### ./submit_reduction.sh data_7TeV \* 200
 ### 

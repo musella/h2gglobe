@@ -67,14 +67,14 @@ doPdfWeightSmear=0
 doInterferenceSmear=0
 doCosThetaDependentInterferenceSmear=0
 
+doEresolSyst=1
+doStocasticSmearingSyst=1
 doEcorrectionSyst=0
-doEresolSyst=0
 doKFactorSyst=0
 doPdfWeightSyst=0
 doPhotonIdEffSyst=0
 doPtSpinSyst=0
 doR9Syst=0
-doStocasticSmearingSyst=0
 doTriggerEffSyst=0
 doVtxEffSyst=0
 
