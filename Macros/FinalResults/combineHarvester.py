@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# vim: ai sw=2 ts=2 mouse=a number
 
 import os
 import numpy
 import sys
 import fnmatch
 from copy import deepcopy as copy
+import re
 
 from optparse import OptionParser
 from optparse import OptionGroup
@@ -52,6 +52,19 @@ class Parallel:
         self.running.task_done()
         return ret
 
+def getFilesFromDatacard(datacard):
+    card = open(datacard,"r")
+    files = set()
+    for l in card.read().split("\n"):
+        if l.startswith("shape"):
+            toks = [t for t in l.split(" ") if t != "" ]
+            files.add(toks[3])
+    files = list(files)
+    ret = files[0]
+    for f in files[1:]:
+        ret += ",%s" % f
+    return ret
+
 parser = OptionParser()
 parser.add_option("-d","--datfile",help="Pick up running options from datfile")
 parser.add_option("-q","--queue",help="Which batch queue")
@@ -63,7 +76,11 @@ parser.add_option("--hadd",help="Trawl passed directory and hadd files. To be us
 parser.add_option("-v","--verbose",default=False,action="store_true")
 parser.add_option("--poix",default="r")
 parser.add_option("--catsMap",default="")
+parser.add_option("--nBins",default=7)
+parser.add_option("--catRanges",default="")
 parser.add_option("--prefix",default="./")
+parser.add_option("--freezeAll",default=False,action="store_true",help="Freeze all nuisances")
+parser.add_option("--float",default="",action="store",help="Freeze all nuisances")
 parser.add_option("--postFitAll",default=False,action="store_true",help="Use post-fit nuisances for all methods")
 #parser.add_option("--blindStd",default=False,action="store_true",help="Run standard suite of blind plots")
 #parser.add_option("--unblindSimple",default=False,action="store_true",help="Run simple set of unblind plots (limit, pval, best fit mu)")
@@ -87,11 +104,17 @@ specOpts.add_option("--cvLow",type="float",default=None)
 specOpts.add_option("--cvHigh",type="float",default=None)
 specOpts.add_option("--cfLow",type="float",default=None)
 specOpts.add_option("--cfHigh",type="float",default=None)
+specOpts.add_option("--kgamLow",type="float",default=None)
+specOpts.add_option("--kgamHigh",type="float",default=None)
+specOpts.add_option("--kgluLow",type="float",default=None)
+specOpts.add_option("--kgluHigh",type="float",default=None)
+specOpts.add_option("--wspace",type="str",default=None)
 specOpts.add_option("--jobs",type="int",default=None)
 specOpts.add_option("--pointsperjob",type="int",default=1)
 specOpts.add_option("--expectSignal",type="float",default=None)
 specOpts.add_option("--expectSignalMass",type="float",default=None)
 specOpts.add_option("--splitChannels",default=None)
+specOpts.add_option("--profileMH",default=True)
 specOpts.add_option("--toysFile",default=None)
 specOpts.add_option("--additionalOptions",default="",type="string")
 specOpts.add_option("--postFit",default=False,action="store_true",help="Use post-fit nuisances")
@@ -105,10 +128,13 @@ if not os.path.exists(os.path.expandvars('$CMSSW_BASE/bin/$SCRAM_ARCH/combineCar
 	sys.exit('ERROR - CombinedLimit package must be installed')
 
 cwd = os.getcwd()
-allowedMethods = ['Asymptotic','AsymptoticGrid','ProfileLikelihood','ChannelCompatibilityCheck','MultiPdfChannelCompatibility','MHScan','MHScanStat','MHScanNoGlob','MuScan','MuScanMHProf','RVScan','RFScan','RVRFScan','MuMHScan','GenerateOnly', 'RProcScan', 'RTopoScan', 'MuVsMHScan']
+allowedMethods = ['Asymptotic','AsymptoticGrid','ProfileLikelihood','ChannelCompatibilityCheck','MultiPdfChannelCompatibility','MHScan','MHScanStat','MHScanNoGlob','MuScan','MuScanMHProf','RVScan','RFScan','RVRFScan','MuMHScan','GenerateOnly', 'RProcScan', 'RTopoScan', 'RBinScan', 'MuVsMHScan','CVCFScan','KGluKGamScan']
 
 if opts.parallel:
     parallel = Parallel(cpu_count())
+
+if not opts.files and opts.datacard:
+    opts.files = getFilesFromDatacard(opts.datacard)
 
 defaults = copy(opts)
 
@@ -131,6 +157,19 @@ def configureMassFromNJobs():
 					opts.masses_per_job[j].append(masses[0])
 					masses = numpy.delete(masses,0)
 		if len(opts.masses_per_job)!=opts.jobs: sys.exit('ERROR - len job config (%d) not equal to njobs (%d)'%(len(opts.masses_per_job),opts.jobs))
+
+def strtodict(lstr):
+	retdict = {}
+	if not len(lstr): return retdict
+	objects = lstr.split(':')
+	for o in objects:
+	  k,vs = o.split('[')
+	  vs = vs.rstrip(']')
+	  vs = vs.split(',')
+	  retdict[k] = [float(vs[0]),float(vs[1])]
+	return retdict
+
+catRanges = strtodict(opts.catRanges)
 
 def getSortedCats():
 	cats = set()
@@ -245,9 +284,11 @@ def writePostamble(sub_file, exec_line):
 		system('bsub -q %s -o %s.log %s'%(opts.queue,os.path.abspath(sub_file.name),os.path.abspath(sub_file.name)))
 	if opts.runLocal:
 		if opts.parallel:
-			parallel.run(system,'bash %s'%os.path.abspath(sub_file.name))
-		else:
-			system('bash %s'%os.path.abspath(sub_file.name))
+                    tmpdir = "/tmp/%s/combineHarvester%d_%d" % ( os.getlogin(), os.getpid(), parallel.njobs )
+                    system('mkdir %s'%tmpdir)
+                    parallel.run(system,['cd %s; bash %s' % ( tmpdir, os.path.abspath(sub_file.name))])
+                else:
+                    system('bash %s'%os.path.abspath(sub_file.name))
 
 def writeAsymptotic():
 	print 'Writing Asymptotic'
@@ -381,14 +422,20 @@ def writeGenerateOnly():
 			opts.outDir = backupdir
 	else:
 		writeSingleGenerateOnly()
-
 def writeMultiPdfChannelCompatibility():
 	
 	print 'Writing MultiPdfChannelCompatibility'
 	backupcard = opts.datacard
 	backupdir = opts.outDir
 	cats = getSortedCats()
+	rmindefault = opts.muLow
+	rmaxdefault = opts.muHigh
+	catRanges = strtodict(opts.catRanges)
 	for cat in cats:
+		if cat in catRanges.keys():
+		  if opts.verbose: print " set ranges for cat %s to"%cat, catRanges[cat]
+		  opts.muLow  = catRanges[cat][0]
+		  opts.muHigh = catRanges[cat][1]
 		if opts.verbose: print cat
 		opts.splitChannels = [cat]
 		splitCard()
@@ -398,25 +445,55 @@ def writeMultiPdfChannelCompatibility():
 		writeMultiDimFit()
 		opts.datacard = backupcard
 		opts.outDir = backupdir
+		opts.muLow  = rmindefault
+		opts.muHigh = rmaxdefault
 	
 def writeMultiDimFit(method=None,wsOnly=False):
 
+        globe_name = "h2gglobe"
+        mypath = os.path.abspath(os.getcwd())
+        while mypath != "":
+            if "h2gglobe" in os.path.basename(mypath):
+                globe_name = os.path.basename(mypath)
+                break
+            mypath = os.path.dirname(mypath)
+        if opts.profileMH:
+            profMH = "--PO higgsMassRange=122,128"
+        else:
+            profMH = ""
+        catsMap = opts.catsMap
+	if not method:
+            method = opts.method            
+        if method == "RBinScan" and catsMap == "":
+            for ibin in range(opts.nBins):
+                binstr = " --PO map='.*cat"
+                comma = "("
+                for icat in range(30):
+                    if icat % opts.nBins == ibin:
+                        binstr += "%s%d" % (comma,icat)
+                        comma ="|"
+                binstr += ").*TeV/.*Bin.*:r_Bin%d[1,0,20]'" % ibin
+                catsMap += binstr
+        
 	print 'Writing MultiDim Scan'
-	ws_args = { "RVRFScan" 	 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs --PO higgsMassRange=120,130" ,
-							"RVScan"	 	 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs --PO higgsMassRange=120,130" ,
-							"RVnpRFScan" 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs --PO higgsMassRange=120,130" ,
-							"RFScan"	 	 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs --PO higgsMassRange=120,130" ,
-							"RFnpRVScan" 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs --PO higgsMassRange=120,130" ,
-							"MuScan"		 		: "",
-							"MuScanMHProf"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingHiggsMass",
-							"CVCFScan"	 		: "-P HiggsAnalysis.CombinedLimit.HiggsCouplingsLOSM:cVcF",
-							"MHScan"		 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs --PO higgsMassRange=120,130",
-							"MHScanStat" 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs --PO higgsMassRange=120,130",
-							"MHScanNoGlob"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs --PO higgsMassRange=120,130",
-							"MuMHScan"	 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingHiggsMass",
-							"RProcScan"	 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH,VH,ttH --PO higgsMassRange=120,130",
-							"RTopoScan"	 		: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel %s --PO higgsMassRange=120,130" % opts.catsMap
-						}
+	ws_args = { "RVRFScan" 	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs " ,
+		"RVScan"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs %s" % profMH,
+		"RVnpRFScan" 	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs %s" % profMH,
+		"RFScan"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs %s" % profMH,
+		"RFnpRVScan" 	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs %s" % profMH,
+		"MuScan"	: "",
+		"MuScanMHProf"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingHiggsMass",
+		"CVCFScan"	: "-P HiggsAnalysis.CombinedLimit.HiggsCouplings:cVcF       %s" % profMH,
+		"KGluKGamScan"	: "-P HiggsAnalysis.CombinedLimit.HiggsCouplings:higgsLoops %s" % profMH,
+		"MHScan"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs  %s" % profMH,
+		"MHScanStat" 	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs  %s" % profMH,
+		"MHScanNoGlob"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:rVrFXSHiggs  %s" % profMH,
+		"MuMHScan"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingHiggsMass",
+		"RTopoScan"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel %s %s" % ( catsMap, profMH ),
+		"RBinScan"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel %s %s" % ( catsMap, profMH ),
+                "RDiffXsScan"	: "-P %s.AnalysisScripts.UnfoldModel:unfoldModel %s" % ( globe_name, profMH ),
+		"RProcScan"	: "-P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH,VH,ttH --PO higgsMassRange=124,126 --PO ggHRange=-1:10 --PO qqHRange=-2:20 --PO VHRange=-2:20 --PO ttHRange=-2:20 "
+	}
 
         setpois = {
             "RVRFScan" : [ "RV", "RF" ],
@@ -427,58 +504,65 @@ def writeMultiDimFit(method=None,wsOnly=False):
             "MuScan": [ ],
             "MuScanMHProf": [ ],
             "CVCFScan": [ "CV", "CF" ],
+            "KGluKGamScan": [ "kgluon", "kgamma" ],
             "MHScan": [ ],
             "MHScanStat": [ ],
             "MHScanNoGlob": [ ],
             "MuMHScan": [ ],
             "RProcScan": [ "r_ggH","r_qqH","r_VH","r_ttH" ],
             "RTopoScan": [ "r_untag","r_qqHtag","r_VHtag","r_ttHtag" ],
+            "RBinScan": [ "r_Bin%d" % i for i in range(opts.nBins) ],
+            "RDiffXsScan": [ "r_Bin%d" % i for i in range(opts.nBins) ],
             }
 	
 	combine_args = {
-		"RVRFScan" 	 		: "-P RV -P RF" ,
-		"RVScan"	 	 	 		: "--floatOtherPOIs=1 -P RV" ,
-		"RVnpRFScan"	 		: "--floatOtherPOIs=0 -P RV" ,
-		"RFScan"	 	 	 		: "--floatOtherPOIs=1 -P RF" ,
-		"RFnpRVScan"	 		: "--floatOtherPOIs=0 -P RF" ,
-		"MuScan"		 	 		: "-P r",
-		"MuScanMHProf"		: "-P r --floatOtherPOIs=1",
-		"CVCFScan"	 	 		: "-P CV -P CF",
-		"MHScan"		 	 		: "--floatOtherPOIs=1 -P MH",
-		"MHScanStat"			: "--floatOtherPOIs=1 -P MH",
-		"MHScanNoGlob"		: "--floatOtherPOIs=1 -P MH",
-		"MuMHScan"	 	 		: "-P r -P MH",
-		"RProcScan"	    : "--floatOtherPOIs=1 -P %s"%(opts.poix), # need to add option to run specific process
-		"RTopoScan"	    : "--floatOtherPOIs=1 -P %s"%(opts.poix) # need to add option to run specific topologic categories
+		"RVRFScan" 	: "-P RV -P RF --floatOtherPOIs=1" , 
+		"RVScan"	: "--floatOtherPOIs=1 -P RV" ,
+		"RVnpRFScan"	: "--floatOtherPOIs=0 -P RV" ,
+		"RFScan"	: "--floatOtherPOIs=1 -P RF" ,
+		"RFnpRVScan"	: "--floatOtherPOIs=0 -P RF" ,
+		"MuScan"	: "-P r",
+		"MuScanMHProf"	: "-P r --floatOtherPOIs=1",
+		"CVCFScan"	: "-P CV -P CF --floatOtherPOIs=1", 
+		"KGluKGamScan"	: "-P kgluon -P kgamma --floatOtherPOIs=1", 
+		"MHScan"	: "--floatOtherPOIs=1 -P MH",
+		"MHScanStat"	: "--floatOtherPOIs=1 -P MH",
+		"MHScanNoGlob"	: "--floatOtherPOIs=1 -P MH",
+		"MuMHScan"	: "-P r -P MH",
+		"RProcScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix), # need to add option to run specific process
+		"RTopoScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix), # need to add option to run specific topologic categories
+		"RBinScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix), # need to add option to run specific topologic categories
+		"RDiffXsScan"	: "--floatOtherPOIs=1 -P %s"%(opts.poix), # need to add option to run specific topologic categories
 		}
 	par_ranges = {}
 	if opts.rvLow!=None and opts.rvHigh!=None and opts.rfLow!=None and opts.rfHigh!=None:
-		par_ranges["RVRFScan"]				= "RV=%4.2f,%4.2f:RF=%4.2f,%4.2f"%(opts.rvLow,opts.rvHigh,opts.rfLow,opts.rfHigh)
+		par_ranges["RVRFScan"]	= "RV=%4.2f,%4.2f:RF=%4.2f,%4.2f"%(opts.rvLow,opts.rvHigh,opts.rfLow,opts.rfHigh)
 	if opts.rvLow!=None and opts.rvHigh!=None:
-		par_ranges["RVScan"]					= "RV=%4.2f,%4.2f"%(opts.rvLow,opts.rvHigh) 
+		par_ranges["RVScan"]	= "RV=%4.2f,%4.2f"%(opts.rvLow,opts.rvHigh) 
 	if opts.rvLow!=None and opts.rvHigh!=None:
-		par_ranges["RVnpRFScan"]			= "RV=%4.2f,%4.2f"%(opts.rvLow,opts.rvHigh)
+		par_ranges["RVnpRFScan"]= "RV=%4.2f,%4.2f"%(opts.rvLow,opts.rvHigh)
 	if opts.rfLow!=None and opts.rfHigh!=None:
-		par_ranges["RFScan"]					= "RF=%4.2f,%4.2f"%(opts.rfLow,opts.rfHigh)
+		par_ranges["RFScan"]	= "RF=%4.2f,%4.2f"%(opts.rfLow,opts.rfHigh)
 	if opts.rfLow!=None and opts.rfHigh!=None:
-		par_ranges["RFnpRVScan"]			= "RF=%4.2f,%4.2f"%(opts.rfLow,opts.rfHigh)
+		par_ranges["RFnpRVScan"]= "RF=%4.2f,%4.2f"%(opts.rfLow,opts.rfHigh)
 	if opts.muLow!=None and opts.muHigh!=None:
-		par_ranges["MuScan"]					= "r=%4.2f,%4.2f"%(opts.muLow,opts.muHigh) 
-		par_ranges["MuScanMHProf"]		= "r=%4.2f,%4.2f"%(opts.muLow,opts.muHigh) 
-		par_ranges["RProcScan"]		    = "%s=%4.2f,%4.2f"%(opts.poix,opts.muLow,opts.muHigh)
-		par_ranges["RTopoScan"]		    = "%s=%4.2f,%4.2f"%(opts.poix,opts.muLow,opts.muHigh)
+		par_ranges["MuScan"]	= "r=%4.2f,%4.2f"%(opts.muLow,opts.muHigh) 
+		par_ranges["MuScanMHProf"]= "r=%4.2f,%4.2f"%(opts.muLow,opts.muHigh) 
+		par_ranges["RProcScan"]	  = "%s=%4.2f,%4.2f"%(opts.poix,opts.muLow,opts.muHigh)
+		par_ranges["RTopoScan"]	  = "%s=%4.2f,%4.2f"%(opts.poix,opts.muLow,opts.muHigh)
+		par_ranges["RBinScan"]	  = "%s=%4.2f,%4.2f"%(opts.poix,opts.muLow,opts.muHigh)
+		par_ranges["RDiffXsScan"] = "%s=%4.2f,%4.2f"%(opts.poix,opts.muLow,opts.muHigh)
 	if opts.cvLow!=None and opts.cvHigh!=None and opts.cfLow!=None and opts.cfHigh!=None:
-		par_ranges["CVCFScan"]				= "CV=%4.2f,%4.2f:CF=%4.2f,%4.2f"%(opts.cvLow,opts.cvHigh,opts.cfLow,opts.cfHigh)
+		par_ranges["CVCFScan"]	  = "CV=%4.2f,%4.2f:CF=%4.2f,%4.2f"%(opts.cvLow,opts.cvHigh,opts.cfLow,opts.cfHigh)
+	if opts.kgamLow!=None and opts.kgamHigh!=None and opts.kgluLow!=None and opts.kgluHigh!=None:
+		par_ranges["KGluKGamScan"] = "kgamma=%4.2f,%4.2f:kgluon=%4.2f,%4.2f"%(opts.kgamLow,opts.kgamHigh,opts.kgluLow,opts.kgluHigh)
 	if opts.mhLow!=None and opts.mhHigh!=None:
-		par_ranges["MHScan"]					= "MH=%6.2f,%6.2f"%(opts.mhLow,opts.mhHigh)
-		par_ranges["MHScanStat"]			= "MH=%6.2f,%6.2f"%(opts.mhLow,opts.mhHigh)
-		par_ranges["MHScanNoGlob"]		= "MH=%6.2f,%6.2f"%(opts.mhLow,opts.mhHigh)
+		par_ranges["MHScan"]	  = "MH=%6.2f,%6.2f"%(opts.mhLow,opts.mhHigh)
+		par_ranges["MHScanStat"]  = "MH=%6.2f,%6.2f"%(opts.mhLow,opts.mhHigh)
+		par_ranges["MHScanNoGlob"]= "MH=%6.2f,%6.2f"%(opts.mhLow,opts.mhHigh)
 	if opts.muLow!=None and opts.muHigh!=None and opts.mhLow!=None and opts.mhHigh!=None:
-		par_ranges["MuMHScan"]				= "r=%4.2f,%4.2f:MH=%6.2f,%6.2f"%(opts.muLow,opts.muHigh,opts.mhLow,opts.mhHigh)
-
+		par_ranges["MuMHScan"]	  = "r=%4.2f,%4.2f:MH=%6.2f,%6.2f"%(opts.muLow,opts.muHigh,opts.mhLow,opts.mhHigh)
 	# create specialised MultiDimFit workspace
-	if not method:
-		method = opts.method
 	backupcard = opts.datacard
 	if method=='MHScanStat':
 		makeStatOnlyCard()
@@ -488,6 +572,7 @@ def writeMultiDimFit(method=None,wsOnly=False):
 		datacardname = os.path.basename(opts.datacard).replace('.txt','')
 		print 'Creating workspace for %s...'%method
 		exec_line = 'text2workspace.py %s -o %s %s'%(os.path.abspath(opts.datacard),os.path.abspath(opts.datacard).replace('.txt',method+'.root'),ws_args[method]) 
+		print exec_line
 		if opts.postFit:
                     exec_line += '&& combine -m 125 -M MultiDimFit --saveWorkspace -n %s_postFit %s' % ( datacardname+method, os.path.abspath(opts.datacard).replace('.txt',method+'.root') )
                     exec_line += '&& mv higgsCombine%s_postFit.MultiDimFit.mH125.root %s' % ( datacardname+method, os.path.abspath(opts.datacard).replace('.txt',method+'_postFit.root') )
@@ -499,6 +584,32 @@ def writeMultiDimFit(method=None,wsOnly=False):
 	if wsOnly:
 		return
 
+        if opts.freezeAll:
+            dcard=open(opts.datacard)
+            nsec = 0
+            nuis = ""
+            toFloat = None
+            if opts.float != "":
+                toFloat = re.compile(opts.float)
+            for line in dcard.read().split("\n"):
+                if line.startswith("#"):
+                    continue
+                if line.startswith("--"):
+                    nsec += 1
+                    continue
+                if nsec == 4:
+                    nu = line.split(" ",1)[0]
+                    if toFloat and toFloat.match(nu):
+                        print "Floating ", nu
+                        continue
+                    if nu != "" and not "pdfindex" in nu:
+                        if nuis != "":
+                            nuis += ","
+                        nuis+=nu
+            if nuis != "":
+                opts.additionalOptions += " --freezeNuisances %s" % nuis
+            print opts.additionalOptions
+
 	if opts.postFit:
             opts.datacard = opts.datacard.replace('.txt',method+'_postFit.root')
             if opts.expected and method in setpois and opts.expectSignal:
@@ -507,14 +618,20 @@ def writeMultiDimFit(method=None,wsOnly=False):
                     if pars != "": pars+=","
                     pars += "%s=%4.2f" % ( poi, opts.expectSignal )
                 if pars != "":
-                    opts.additionalOptions += " --setPhysicsModelParameters %s" %pars
+                    if not "--setPhysicsModelParameters" in opts.additionalOptions:
+		      opts.additionalOptions += " --setPhysicsModelParameters %s" %pars
+
 	else:
 		opts.datacard = opts.datacard.replace('.txt',method+'.root')
+        
+            
+            
 	# make job scripts
 	for i in range(opts.jobs):
 		file = open('%s/sub_m%1.5g_job%d.sh'%(opts.outDir,getattr(opts,"mh",0.),i),'w')
 		writePreamble(file)
-		exec_line = 'combine %s -M MultiDimFit --X-rtd ADDNLL_FASTEXIT --keepFailures --cminDefaultMinimizerType Minuit2 --algo=grid --setPhysicsModelParameterRanges %s %s --points=%d --firstPoint=%d --lastPoint=%d -n Job%d'%(opts.datacard,par_ranges[method],combine_args[method],opts.pointsperjob*opts.jobs,i*opts.pointsperjob,(i+1)*opts.pointsperjob-1,i)
+		exec_line = 'combine %s -M MultiDimFit --cminDefaultMinimizerType Minuit2 --cminDefaultMinimizerAlgo migrad --algo=grid  %s --points=%d --firstPoint=%d --lastPoint=%d -n %sJob%d'%(opts.datacard,combine_args[method],opts.pointsperjob*opts.jobs,i*opts.pointsperjob,(i+1)*opts.pointsperjob-1,method,i)
+		if method in par_ranges.keys(): exec_line+=" --setPhysicsModelParameterRanges %s "%(par_ranges[method])
 		if getattr(opts,"mh",None): exec_line += ' -m %6.2f'%opts.mh
 		if opts.expected: exec_line += ' -t -1'
 		if opts.expectSignal: exec_line += ' --expectSignal %4.2f'%opts.expectSignal
@@ -537,12 +654,13 @@ def run():
 	if opts.postFit:
 		opts.additionalOptions += " --snapshotName MultiDimFit"
 		if opts.expected:
-			opts.additionalOptions += " --toysFrequentist --bypassFrequentistFit"
+			opts.additionalOptions += " --toysFrequentist --bypassFrequentistFit" # Skip the actual fit but recentre constraints on fitted values from snapshot.
 		if ( opts.method=='Asymptotic' or opts.method=='AsymptoticGrid' or opts.method=='ProfileLikelihood' or  opts.method=='ChannelCompatibilityCheck' or  opts.method=='MultiPdfChannelCompatibility' or  opts.method=='MultiPdfChannelCompatibility'):
 			writeMultiDimFit("MuMHScan",True)
 			opts.datacard = opts.datacard.replace('.txt','MuMHScan_postfit.root')
 			if opts.expected:
-				opts.additionalOptions += " ---overrideSnapshotMass --redefineSignalPOIs r --freezeNuisances MH"
+				opts.additionalOptions += " --overrideSnapshotMass --redefineSignalPOIs r --freezeNuisances MH"
+	if opts.wspace: opts.datacard=opts.wspace	
 	if opts.method=='Asymptotic' or opts.method=='AsymptoticGrid' or opts.method=='ProfileLikelihood':
 		configureMassFromNJobs()
 	if opts.method=='Asymptotic':
@@ -560,7 +678,6 @@ def run():
 	else:
 		writeMultiDimFit()
 	opts.datacard = storecard
-		
 def resetDefaultConfig():
     global opts
     opts = copy(defaults)
@@ -587,7 +704,11 @@ def configure(config_line):
 		if option.startswith('splitChannels='): opts.splitChannels = option.split('=')[1].split(',')
 		if option.startswith('toysFile='): opts.toysFile = option.split('=')[1]
 		if option.startswith('mh='): opts.mh = float(option.split('=')[1])
-		if option.startswith('poix='): opts.poix = option.split('=')[1]
+		if option.startswith('poix='): 
+			poiopt = option.split('=')[1]
+			if ',' in poiopt:
+				opts.poix = " -P ".join(poiopt.split(','))
+			else: opts.poix = option.split('=')[1]
 		if option.startswith('muLow='): opts.muLow = float(option.split('=')[1])
 		if option.startswith('muHigh='): opts.muHigh = float(option.split('=')[1])
 		if option.startswith('rvLow='): opts.rvLow = float(option.split('=')[1])
@@ -598,16 +719,35 @@ def configure(config_line):
 		if option.startswith('cvHigh='): opts.cvHigh = float(option.split('=')[1])
 		if option.startswith('cfLow='): opts.cfLow = float(option.split('=')[1])
 		if option.startswith('cfHigh='): opts.cfHigh = float(option.split('=')[1])
-		if option.startswith('opts='): opts.additionalOptions = option.split('=')[1].replace(',',' ')
+		if option.startswith('kgamLow='): opts.kgamLow = float(option.split('=')[1])
+		if option.startswith('kgamHigh='): opts.kgamHigh = float(option.split('=')[1])
+		if option.startswith('kgluLow='): opts.kgluLow = float(option.split('=')[1])
+		if option.startswith('kgluHigh='): opts.kgluHigh = float(option.split('=')[1])
+		if option.startswith('wspace='): opts.wspace = str(option.split('=')[1])
+		if option.startswith('catRanges='): opts.catRanges = str(option.split('=')[1])
+		if option.startswith('nBins='): opts.nBins = int(option.split('=')[1])
+                if option.startswith('freezeAll='): opts.freezeAll = int(option.split('=')[1])
+                if option.startswith('float='): opts.float = str(option.split('=')[1])
+		if option.startswith('opts='): 
+			addoptstr = option.split("=")[1:]
+			addoptstr = "=".join(addoptstr)
+			opts.additionalOptions =  addoptstr.replace('+',' ')
+			opts.additionalOptions = opts.additionalOptions.replace(">"," ")
+			opts.additionalOptions = opts.additionalOptions.replace("<"," ")
 		if option.startswith('catsMap='):
 			print option
 			for mp in option.split('=')[1].split(';'):
 				if not "[" in mp.split(':')[-1]:
 					mp += "[1,0,20]"
 				opts.catsMap += " --PO map=%s" % mp
+		if option.startswith('catRanges='):
+			catRanges = strtodict(opts.catRanges)
 		if option == "skipWorkspace": opts.skipWorkspace = True
-		if option == "postFit": opts.postFit = True
+		if option == "postFit":  opts.postFit = True
+		if option == "expected": opts.expected = 1
         if opts.postFitAll: opts.postFit = True
+	if opts.wspace : opts.skipWorkspace=True
+	if "-P" in opts.poix and (opts.muLow!=None or opts.muHigh!=None): sys.exit("Cannot specify muLow/muHigh with >1 POI. Remove the muLow/muHigh option and add use --setPhysicsModelParameterRanges in opts keyword") 
 	if opts.verbose: print opts
 	run()
 
@@ -640,12 +780,15 @@ elif opts.datfile:
 			opts.datacard = line.split('=')[1]
                         defaults.datacard = opts.datacard
 			assert('.txt' in opts.datacard)
+                        opts.files = getFilesFromDatacard(opts.datacard)
+                        defaults.files = opts.files
 			continue
 		if line.startswith('files'):
 			opts.files = line.split('=')[1]
                         defaults.files = opts.files
 			continue
 		configure(line)
+
 else:
 	# default setup here
 	print 'Not yet implemented'
