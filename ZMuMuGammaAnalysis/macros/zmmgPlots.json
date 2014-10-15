@@ -1,11 +1,11 @@
 {
-    "drawopts" : ["Draw","e","hist","hist nostack"],
-    "legpos"  : [0.137,0.725,0.374,0.888],
+    "drawopts" : ["Draw","e","hist e","hist nostack"],
+    "legpos"  : [0.180,0.725,0.430,0.888],
 	
     "sig": null, 
 	
     "bkg": [ ["Zmmg","Z #rightarrow #mu #mu #gamma",
-	      [["colors","kBlue"],["SetLineWidth",2],["SetFillStyle",1],["Scale",1],["legopt","l"]],
+	      [["colors","myColorA1"],["SetLineWidth",2],["SetFillStyle",1],["Scale",1],["legopt","f"],["SetFillColor","myColorA3"]],
 	      { "dymm_m90" : [] }
 	      ]
 	     ],
@@ -16,42 +16,45 @@
 	       ]
 	      ],
 
-    "categories": [0,1,2,3,4,5,6], 
+    "categories": [0,1,2,3], 
     "labels": {"cat0": "all",
-	    "cat1": "eb",
-	    "cat2": "ee",
-	    "cat3": "eb_highpt",
-	    "cat4": "eb_lowpt",
-	    "cat5": "ee_highpt",
-	    "cat6": "ee_lowpt"
+	    "cat1": "eb_loweta",
+	    "cat2": "eb_higheta",
+	    "cat3": "ee"
 	    },
 	
     "plots": [
-	      ["mmg_pt"   ,[],null,null],
+	      ["mmg_mass" ,[["Rebin",3],["ytitle","Events / %(binw)s GeV"],["printIntegral",[87,93]]],null,null],
+	      ["mmg_pt"   ,[["Rebin",2],["xrange",[0.0,60.0]]],null,[0.580,0.725,0.830,0.888]],
 	      ["mmg_eta"  ,[],null,null],
 	      ["mmg_phi"  ,[],null,null],
-	      ["mmg_mass" ,[["Rebin",2],["ytitle","Events / %(binw)s GeV"]],null,null],
 	      ["nvtx"     ,[],null,null],
 	      ["pho_n"    ,[],null,null],
 	      ["pho_e"    ,[],null,null],
-	      ["pho_pt"   ,[],null,null],
+	      ["pho_pt"   ,[["xrange",[0.0,60.0]]],null,[0.580,0.725,0.830,0.888]],
 	      ["pho_eta"  ,[],null,null],
 	      ["pho_phi"  ,[],null,null],
 	      ["pho_sce"  ,[],null,null],
 	      ["pho_sceta",[],null,null],
 	      ["pho_r9"   ,[],null,null],
-	      ["mu1_pt"   ,[],null,null],
+	      ["mu1_pt"   ,[["xrange",[20.0,80.0]]],null,[0.580,0.725,0.830,0.888]],
 	      ["mu1_eta"  ,[],null,null],
 	      ["mu1_phi"  ,[],null,null],
-	      ["mu2_pt"   ,[],null,null],
+	      ["mu2_pt"   ,[["xrange",[0.0,60.0]]],null,[0.580,0.725,0.830,0.888]],
 	      ["mu2_eta"  ,[],null,null],
 	      ["mu2_phi"  ,[],null,null],
-	      ["mumu_pt"  ,[],null,null],
+	      ["mumu_pt"  ,[["Rebin",2],["xrange",[0.0,60.0]]],null,[0.580,0.725,0.830,0.888]],
 	      ["mumu_eta" ,[],null,null],
 	      ["mumu_phi" ,[],null,null],
-	      ["mumu_mass",[["Rebin",4],["ytitle","Events / %(binw)s GeV"]],null,null]
+	      ["mumu_mass",[["Rebin",6],["ytitle","Events / %(binw)s GeV"]],null,null]
 	      
 	      ], 
-	
+
+    "styles": { 
+	"!mmg_mass_Zmmg_all" : [["Scale",0.929]],	
+	"!mmg_mass_Zmmg_eb_loweta" : [["Scale",0.981]],
+	"!mmg_mass_Zmmg_eb_higheta" : [["Scale",0.911]],
+	"!mmg_mass_Zmmg_ee" : [["Scale",0.863]]
+	},	
     "template": "%(name)s_%(cat)s_%(sample)s"
 }

@@ -28,17 +28,28 @@ ZMuMuGammaAnalysis::ZMuMuGammaAnalysis()
 	phoPtMin 	= 20.;
 	dEtaMin 	= 0.;
 	dRMin 		= 0.05;
-	dRMax 		= 0.8;
-	applyMuGsfVeto  = true;
-	muIsoMax 	= 0.2;
-	leadMuPtMin 	= 25.;
+	dRMax 		= 0.5;
+	applyMuGsfVeto  = false;
+	muIsoMax 	= 9999.;
+	leadMuPtMin 	= 35.;
 	subMuPtMin 	= 10.5;
 	diMuMassMin 	= 35.;
-	farMuPtMin 	= 21.;
+	farMuPtMin 	= 10.5;
 	massSumMax 	= 180.;
+	deltaPtMin      = 0.;
 	applyPhoPresel 	= false;
 	doFsr           = true;
 	useSvariable    = false;
+	applyPhoID      = true;
+	idMVACuts.push_back(-2);
+	idMVACuts.push_back(0.);
+	idMVACuts.push_back(-2);
+	idMVACuts.push_back(0.);
+	isoCuts.push_back(9999.);
+	isoCuts.push_back(5.);
+	isoCuts.push_back(9999.);
+	isoCuts.push_back(5.);
+	
 }
 
 ZMuMuGammaAnalysis::~ZMuMuGammaAnalysis(){}
@@ -104,13 +115,13 @@ void ZMuMuGammaAnalysis::Init(LoopAll& l)
     	assert( run7TeV4Xanalysis );
     }
 
-    for(std::vector<BaseSmearer *>::iterator  si=systPhotonSmearers_.begin(); si!= systPhotonSmearers_.end(); ++si ) {
-	    if( *si != eScaleSmearer ) {
-		    (*si)->minShift(-1.);
-		    (*si)->maxShift(1.);
-	    }
-	    
-    }
+    /// for(std::vector<BaseSmearer *>::iterator  si=systPhotonSmearers_.begin(); si!= systPhotonSmearers_.end(); ++si ) {
+    /// 	    if( *si != eScaleSmearer ) {
+    /// 		    (*si)->minShift(-1.);
+    /// 		    (*si)->maxShift(1.);
+    /// 	    }
+    /// 	    
+    /// }
 
     // replace trigger selection
     triggerSelections.clear();
@@ -190,22 +201,23 @@ bool ZMuMuGammaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TL
     smeared_pho_weight.clear(); smeared_pho_weight.resize(l.pho_n,1.);
     applySinglePhotonSmearings(smeared_pho_energy, smeared_pho_r9, smeared_pho_weight, cur_type, l, energyCorrected, energyCorrectedError,
     			       phoSys, syst_shift);
-    
+        
     std::vector<int> sorted_phos;
     std::vector<float> pho_minDr;
     TClonesArray phos_p4(TLorentzVector::Class(),l.pho_n);
     for(int ipho=0; ipho<l.pho_n; ++ipho) { 
     	    TLorentzVector p4 = l.get_pho_p4( ipho, 0, &smeared_pho_energy[0]);
-	    std::cout << smeared_pho_energy[ipho] << endl;
+	    /// std::cout << smeared_pho_energy[ipho] << endl;
     	    // Fill TClonesArray with corrected 4-vectors
     	    new(phos_p4[ipho]) TLorentzVector(p4);
 	    TVector3 & sc = *((TVector3*)l.sc_xyz->At(l.pho_scind[ipho]));
 	    
-	    p4.Print();
+	    /// p4.Print();
 
 	    pho_minDr.push_back( min(p4.DeltaR(leadMu), p4.DeltaR(subMu)) );
 	    if ( photonSelection( p4, sc ) && 
-		 ( applyPhoPresel || l.PhotonMITPreSelection( ipho, 0 , &smeared_pho_energy[0] ) ) &&
+		 ( ! applyPhoPresel || l.PhotonMITPreSelection( ipho, 0 , &smeared_pho_energy[0] ) ) &&
+		 ( ! applyPhoID || photonID(l, ipho, p4, sc) ) &&
 		 FSRselection (l, ileadMu, isubMu, ipho, phos_p4  )
 		    )  {
     		    sorted_phos.push_back(ipho);
@@ -219,6 +231,7 @@ bool ZMuMuGammaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TL
     
     int iselPho = sorted_phos[0];
     TLorentzVector & selPho =  *((TLorentzVector*)phos_p4.At(iselPho));
+    TVector3 & selSc = *((TVector3*)l.sc_xyz->At(l.pho_scind[iselPho]));
     /// if ( ! FSRselection (l, ileadMu, isubMu, iselPho, phos_p4  ) ) {return false;}
     /// // Apply photon pre-selection a la Hgg
     /// if ( applyPhoPresel && ! l.PhotonMITPreSelection( iselPho, 0 , &smeared_pho_energy[0] ) ) {return false;}
@@ -230,19 +243,19 @@ bool ZMuMuGammaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TL
     if( mass<massMin || mass>massMax ) { return false; }
     
     // assign event to categories
-    int etacat = (!l.pho_isEB[iselPho]);
-    int ptcat  = (selPho.Pt()<25.)+(selPho.Pt()<40.);
+    int ptcat  = (selPho.Pt()<25.)+(selPho.Pt()<30.)+(selPho.Pt()<40.);
+    int etacat = (fabs(selSc.Eta())>0.9) + (fabs(selSc.Eta())>1.5);
     int r9cat  = (l.pho_r9[iselPho] < 0.94);
-    category = r9cat  + 2*etacat + 4*ptcat;
+    category = r9cat  + 2*etacat + 6*ptcat;
     evweight = weight * smeared_pho_weight[iselPho] * genLevWeight;
     if( ! isSyst ) {
     	    l.countersred[diPhoCounter_]++;
-
+	    
 	    // fill control plots
 	    fillPlots(0,evweight,l,ileadMu,isubMu,leadMu,subMu,diMu,iselPho,selPho,this->getMumugP4());
 	    fillPlots(1+etacat,evweight,l,ileadMu,isubMu,leadMu,subMu,diMu,iselPho,selPho,this->getMumugP4());
-	    fillPlots(3+2*etacat+ptcat,evweight,l,ileadMu,isubMu,leadMu,subMu,diMu,iselPho,selPho,this->getMumugP4());
-	    fillPlots(7+category,evweight,l,ileadMu,isubMu,leadMu,subMu,diMu,iselPho,selPho,this->getMumugP4());
+	    fillPlots(4+2*etacat+ptcat,evweight,l,ileadMu,isubMu,leadMu,subMu,diMu,iselPho,selPho,this->getMumugP4());
+	    fillPlots(13+category,evweight,l,ileadMu,isubMu,leadMu,subMu,diMu,iselPho,selPho,this->getMumugP4());
 	    //cout << " After filling the plots " << endl;    
 	    //return (category >= 0 && mass>=massMin && mass<=massMax);
     }
@@ -312,6 +325,8 @@ void ZMuMuGammaAnalysis::fillTree(float evweight,
     treevars_.subMuGsf  = l.mu_glo_hasgsftrack[isubMu];
     if( iselPho >= 0 ) {
 	    std::vector<std::vector<bool> > ph_passcut;
+	    // do not cached photon ID MVA value, as we want to also fill all the input variables
+	    l.pho_idmva_cached = false;
 	    treevars_.idmva      = l.photonIDMVA(iselPho,0,selPho,bdtTrainingType.c_str()); // this also sets all the l.tmva_* variables
 	    treevars_.ciclevel   = l.PhotonCiCPFSelectionLevel(iselPho, 0, ph_passcut, 4, 0, &smeared_pho_energy[0]);
 	    treevars_.photonRegE = photonInfoCollection[iselPho].corrEnergy(); // store regression energy before eScale corrections / smearing
@@ -368,6 +383,17 @@ bool ZMuMuGammaAnalysis::photonSelection (TLorentzVector& p4, TVector3 & sc ) {
 
 }
 
+bool ZMuMuGammaAnalysis::photonID (LoopAll&l, int ipho, TLorentzVector& p4, TVector3 & sc ) {
+	int phoCategory = (fabs(sc.Eta())>1.5)*2 + (l.pho_r9[ipho]<0.94);
+	float idMVACut = idMVACuts[phoCategory];
+	float isoCut   = isoCuts[phoCategory];
+	
+	float idmva      = l.photonIDMVA(ipho,0,p4,bdtTrainingType.c_str());
+	float iso        = (*l.pho_pfiso_mycharged03)[ipho][0];
+	
+	return (iso<isoCut && idmva>idMVACut);
+}
+
 bool ZMuMuGammaAnalysis::FSRselection ( LoopAll& l, int ileadMu, int isubMu, int iPho, TClonesArray& phos_p4 ) {
 
   int iNearMu=ileadMu;
@@ -376,6 +402,7 @@ bool ZMuMuGammaAnalysis::FSRselection ( LoopAll& l, int ileadMu, int isubMu, int
   TLorentzVector & leadMu =  *( (TLorentzVector*)l.mu_glo_p4->At(ileadMu));
   TLorentzVector & subMu  =  *( (TLorentzVector*)l.mu_glo_p4->At(isubMu) );    
   TLorentzVector & selPho =  *((TLorentzVector*)phos_p4.At(iPho));
+  if( leadMu.Pt() - selPho.Pt() <= deltaPtMin ) { return false; }
   TLorentzVector diMu = leadMu + subMu;
   
   //

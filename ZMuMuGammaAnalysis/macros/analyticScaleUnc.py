@@ -85,7 +85,7 @@ def main(options,args):
                 for name,defs in nuisances.iteritems():
                     allnuis.append(name)
                     cat, dum = defs
-                    tree.Draw("deltaE*(%s):category>>hshift(15,-0.5,14.5,1001.,-1.0001e-2,1.0001e-2)" % (cat),"weight","goff")
+                    tree.Draw("deltaE*(%s):category>>hshift(24,-0.5,23.5,1001.,-1.0001e-2,1.0001e-2)" % (cat),"weight","goff")
                     h = ROOT.gDirectory.Get("hshift")
                     prf = h.ProfileX("%s_%s" % ( proc, name ) )
                     objs.append(prf)
@@ -98,7 +98,7 @@ def main(options,args):
     for name in allnuis:
         print "%s," % name,
     print "tot"
-    for cat in range(14):
+    for cat in range(24):
         print "%d," % cat,
         for proc in procs:
             tot = 0.

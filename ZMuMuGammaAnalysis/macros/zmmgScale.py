@@ -97,7 +97,7 @@ def recFit(h,start=1.,sigma=1.):
     mean  = f.GetParameter(1)
     sigma = f.GetParameter(2)*1
     iter = 0
-    while iter < 5 or ( fabs(1. - mean/oldmean) > 0.005 and iter < 30 ):
+    while iter < 5 or ( fabs(oldmean - mean) > 0.005*oldmean and iter < 30 ):
         g = ROOT.TF1("g","gaus",mean-sigma,mean+sigma)
         h.Fit(g,"LQRN")
         oldmean = float(mean)
@@ -112,9 +112,12 @@ def recFit(h,start=1.,sigma=1.):
     fcanv.cd()
     g = ROOT.TF1("final_fit_%s" % h.GetName(),"gaus",mean-sigma,mean+sigma)
     g.SetLineColor(h.GetLineColor())
-    h.Fit(g,"LQRO")
     ## h.GetListOfFunctions().Add(g.Clone())
-    h.Draw()
+    hp = h.Clone()
+    hp.Rebin(10)
+    ytitle( hp, "Events / %(binw)s" )
+    hp.Fit(g,"LQRO")
+    hp.Draw()
     g.Draw("same")
     objs.append(g)
     objs.append(fcanv)
@@ -162,7 +165,7 @@ def main(options,args):
     ## methods = [recFit,1.,0.683,(85.,97.),(86.,96.),(88,94),(89,93),(90,92)]
     ## methods = [recFit]
     ## methods = [recFit,1.,0.95,0.8,0.683,0.5]
-    methods = [1.,0.95,recFit,]
+    methods = [1.,0.95,recFit]
     if len(options.groups) > 0:
         categories = [ [int(t) for t in g.split(",")] for g in options.groups ]
     else:
@@ -192,10 +195,10 @@ def main(options,args):
         icat = igroup
         hdata.SetLineColor(ROOT.kBlack)
         hdata.SetMarkerColor(ROOT.kBlack)
-        ytitle( hdata, "Events / %(binw)s GeV" )
+        ytitle( hdata, "Events / %(binw)s" )
         for s,h in hmcs.iteritems():
             h.SetLineColor(ROOT.kRed)
-            ytitle( h, "Events / %(binw)s GeV" )
+            ytitle( h, "Events / %(binw)s" )
         hmcs[0].SetLineColor(ROOT.kBlue)
         
         ## hmcs[0].GetXaxis().SetRangeUser(80.,100.)

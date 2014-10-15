@@ -23,7 +23,9 @@ plotvariables zmumugamma/plotvariables.dat
 # 	configuration file
 # syntax:
 # 	analyzer <class_name> <config_file>
-analyzer ZMuMuGammaAnalysis photonanalysis.dat analysis_settings.dat statanalysis.dat zmumugamma/zmumugammaanalysis.dat sigPointsToBook=90 sigProcessesToBook=dymm zmumugamma/use_svar.dat muIsoMax=999 applyMuGsfVeto=0 phoPtMin=5. dEtaMin=0. dRMin=0 dRMax=999. farMuPtMin=0. massSumMax=999. leadMuPtMin=20. subMuPtMin=10. diMuMassMin=0.
+analyzer ZMuMuGammaAnalysis photonanalysis.dat analysis_settings.dat statanalysis.dat zmumugamma/zmumugammaanalysis.dat sigPointsToBook=90 sigProcessesToBook=dymm zmumugamma/use_svar.dat muIsoMax=999 applyMuGsfVeto=0 
+
+## phoPtMin=5. dEtaMin=0. dRMin=0 dRMax=999. farMuPtMin=0. massSumMax=999. leadMuPtMin=20. subMuPtMin=10. diMuMassMin=0.
 
 
 

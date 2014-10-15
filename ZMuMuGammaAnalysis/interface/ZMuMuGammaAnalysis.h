@@ -47,7 +47,8 @@ private:
 
   bool muonSelection (LoopAll& l, int iMu); 
   bool photonSelection (TLorentzVector& p4, TVector3 & sc);
-  bool FSRselection ( LoopAll& l, int iMu1, int iMu2, int iPho, TClonesArray& p4Vec ); 
+  bool photonID (LoopAll&l, int ipho, TLorentzVector& p4, TVector3 & sc );
+  bool FSRselection ( LoopAll& l, int iMu1, int iMu2, int iPho, TClonesArray& p4Vec );
   TreeVariables treevars_;
   TLorentzVector&  getMumugP4() {return mumugMass_;}
 
@@ -76,9 +77,11 @@ private:
   float diMuMassMin;
   float farMuPtMin;
   float massSumMax;
-  
-  bool doFsr,applyPhoPresel,useSvariable;
+  float deltaPtMin;
 
+  bool doFsr,applyPhoPresel,useSvariable,applyPhoID;
+  
+  std::vector<float> idMVACuts, isoCuts;
 };
 
 #endif
