@@ -191,7 +191,7 @@ bool ZMuMuGammaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TL
 	    fillPlots(category+1,evweight,l,ileadMu,isubMu,leadMu,subMu,diMu,-1,null,null);
 	    return ( mass >= massMin && mass <= massMax );
     }
-    
+
     // Photon selection
     // -------------------------------------------------------------------------------------------------
     
@@ -223,7 +223,7 @@ bool ZMuMuGammaAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TL
     		    sorted_phos.push_back(ipho);
     	    }
     }
-
+    
     if( sorted_phos.size() < 1 ) { return false; }
     std::sort(sorted_phos.begin(),sorted_phos.end(),SimpleSorter<float>(&pho_minDr[0]) );
     //// std::sort(sorted_phos.begin(),sorted_phos.end(),
