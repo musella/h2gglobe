@@ -131,14 +131,14 @@ void Normalization_8TeV::FillSignalTypes(){
 
 TGraph * Normalization_8TeV::GetSigmaGraph(TString process)
 {
-  TGraph * gr = new TGraph();
+	TGraph * gr = new TGraph();
 	std::map<double, double> * XSectionMap = 0 ;
 	if ( process == "ggh") {
 		XSectionMap = &XSectionMap_ggh;
 	} else if ( process == "vbf") {
 		XSectionMap = &XSectionMap_vbf;
-    } else if ( process == "vbfold") {
-      XSectionMap = &XSectionMap_vbfold;
+	} else if ( process == "vbfold") {
+		XSectionMap = &XSectionMap_vbfold;
 	} else if ( process == "wzh") {
 		XSectionMap = &XSectionMap_wzh;
 	} else if ( process == "tth") {
@@ -147,16 +147,16 @@ TGraph * Normalization_8TeV::GetSigmaGraph(TString process)
 		XSectionMap = &XSectionMap_wh;
 	} else if ( process == "zh") {
 		XSectionMap = &XSectionMap_zh;
-	} else if (process.Contains("grav")){
-    XSectionMap = &XSectionMap_sm;
-  } else {
-    std::cout << "Warning ggh, vbf, wh, zh, wzh, tth or grav not found in histname!!!!" << std::endl;
-    //exit(1);
-  }
-  
-  for (std::map<double, double>::const_iterator iter = XSectionMap->begin();  iter != XSectionMap->end(); ++iter) {
-    gr->SetPoint(gr->GetN(),iter->first, iter->second );
-  }
+	} else if (process.Contains("grav") || process == "sm" ){
+		XSectionMap = &XSectionMap_sm;
+	} else {
+		std::cout << "Warning ggh, vbf, wh, zh, wzh, tth or grav not found in histname!!!!" << std::endl;
+		//exit(1);
+	}
+	
+	for (std::map<double, double>::const_iterator iter = XSectionMap->begin();  iter != XSectionMap->end(); ++iter) {
+		gr->SetPoint(gr->GetN(),iter->first, iter->second );
+	}
 	
 	return gr;
 }

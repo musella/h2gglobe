@@ -50,7 +50,7 @@ for g,jo in groups.iteritems():
     for j in jo: print "%s" % os.path.basename(j).replace("sub","").replace(".sh",""),
     print
 
-autorestart = [20,21,152]
+autorestart = [20,21,152,1]
 restart = ""
 for j in groups["fail"]:
     try:

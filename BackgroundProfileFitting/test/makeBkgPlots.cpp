@@ -974,6 +974,7 @@ int main(int argc, char* argv[]){
 		else {
 			RooRealVar *MH = (RooRealVar*)w_sig->var("MH");
 			RooAbsPdf *sigPDF = (RooAbsPdf*)w_sig->pdf(Form("sigpdfrelcat%d_allProcs",cat));
+			if ( sigPDF ==NULL  ) cout<< "pdf:"<< Form("sigpdfrelcat%d_allProcs",cat) <<" seems not to exist in sigfile"<<endl;
 			MH->setVal(mhvalue_);
 			sigPDF->plotOn(plot,Normalization(1.0,RooAbsReal::RelativeExpected),LineColor(kBlue),LineWidth(3));
 			sigPDF->plotOn(plot,Normalization(1.0,RooAbsReal::RelativeExpected),LineColor(kBlue),LineWidth(3),FillColor(38),FillStyle(3001),DrawOption("F"));

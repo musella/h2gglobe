@@ -14,6 +14,7 @@
 #include "PtSpinSmearer.h"
 #include "PdfWeightSmearer.h"
 #include "InterferenceSmearer.h"
+#include "JetEnergySmearer.h"
 #include <iostream>
 #include <fstream>
 #include "math.h"
@@ -59,6 +60,7 @@ class StatAnalysis : public PhotonAnalysis
     bool  doEscaleSmear, doEresolSmear, doPhotonIdEffSmear, doVtxEffSmear, doR9Smear, doTriggerEffSmear, 
 	doKFactorSmear, doPtSpinSmear, doInterferenceSmear, doCosThetaDependentInterferenceSmear;
     bool doPdfWeightSmear, doPdfWeightSyst;
+    bool doJecSyst, doJerSyst;
     float systRange;
     int   nSystSteps;   
     //int   nEtaCategories, nR9Categories, nPtCategories;
@@ -74,6 +76,18 @@ class StatAnalysis : public PhotonAnalysis
     std::vector<float> cosThetaCatBoundaries;
     double genCosTheta;
     double cosTheta;
+
+    bool doDifferentialAnalysis;
+    bool doOutOfJetAcceptance;
+    int nVarCategories;
+    std::string VarDef;
+    std::vector<float> varCatBoundaries;
+    double JetPtForDiffAnalysis;
+    double JetEtaForDiffAnalysis;
+    double varValue;
+    float DiffAna_iJet1,DiffAna_iJet2; 
+    double DiffAna_Njets, DiffAna_LeadJetpT, DiffAna_dRapidityHiggsJet, DiffAna_Mjj, DiffAna_dEtajj, DiffAna_Zepp, DiffAna_dPhijj, DiffAna_dPhiggjj;
+
 
     bool splitwzh;
 
@@ -130,8 +144,8 @@ class StatAnalysis : public PhotonAnalysis
     float sigmaMrv, sigmaMwv;
     int vbfIjet1, vbfIjet2;
 
-    void buildBkgModel(LoopAll& l, const std::string & postfix);
-    void bookSignalModel(LoopAll& l, int nBins);
+    virtual void buildBkgModel(LoopAll& l, const std::string & postfix);
+    virtual void bookSignalModel(LoopAll& l, int nBins);
 
     std::vector<float> smeared_pho_energy;
     std::vector<float> smeared_pho_r9;
@@ -141,6 +155,7 @@ class StatAnalysis : public PhotonAnalysis
 
     void  computeExclusiveCategory(LoopAll & l, int & category, std::pair<int,int> diphoton_index, float pt, float mass, float diphoBDT=1., bool mvaselection=false);
     void computeSpinCategory(LoopAll &l, int &category, TLorentzVector lead_p4, TLorentzVector sublead_p4);
+    void computeDifferentialVariableCategory(LoopAll &l, int &category, TLorentzVector lead_p4, TLorentzVector sublead_p4, int diphoton_id, float* smeared_pho_energy);
 
     void fillControlPlots(const TLorentzVector & lead_p4, const  TLorentzVector & sublead_p4, const TLorentzVector & Higgs, 
 			  float lead_r9, float sublead_r9, int diphoton_index, 
@@ -158,6 +173,7 @@ class StatAnalysis : public PhotonAnalysis
     std::vector<PdfWeightSmearer*> pdfWeightSmearer_sets;
     InterferenceSmearer * interferenceSmearer;
     PtSpinSmearer * ptSpinSmearer;
+    JetEnergySmearer *jecSmearer, *jerSmearer;
     
     std::string name_;
     std::map<int,std::string> signalLabels;

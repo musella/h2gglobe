@@ -5,6 +5,7 @@ import sys
 import re
 
 procOrder=('ggh', 'vbf', 'wzh', 'wh', 'zh', 'tth')
+#procOrder=('ggh', 'vbf', 'wzh', 'wh', 'zh', 'tth','Bin0','Bin1','Bin2','Bin3','Bin4','Bin5','Bin6','Bin7','Bin8')
 
 adHocFactors={
 	'ggh': 0.975,
@@ -13,6 +14,15 @@ adHocFactors={
 	'wh': 1.0,
 	'zh': 1.0,
 	'tth': 1.0,
+	'Bin0': 1.0,
+	'Bin1': 1.0,
+	'Bin2': 1.0,
+	'Bin3': 1.0,
+	'Bin4': 1.0,
+	'Bin5': 1.0,
+	'Bin6': 1.0,
+	'Bin7': 1.0,
+	'Bin8': 1.0,
 }
 
 

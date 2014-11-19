@@ -1,3 +1,5 @@
+#include "HiggsAnalysis/GBRLikelihoodEGTools/interface/SigETransform.h"
+
 #ifndef MassResolution_h
 #define MassResolution_h
 
@@ -88,7 +90,20 @@ class MassResolution {
     
     double leadPhotonResolutionNoSmear() { return leadRelPhotonResolutionNoSmear() * leadPhoton->corrEnergy(); };
     double subleadPhotonResolutionNoSmear() { return subleadRelPhotonResolutionNoSmear() * subleadPhoton->corrEnergy(); };
+
+    double decorrLeadRelPhotonResolutionNoSmear();
+    double decorrSubleadRelPhotonResolutionNoSmear();
+    
+    double decorrLeadRelPhotonResolution();
+    double decorrSubleadRelPhotonResolution();
+    
+    double decorrRelMassResolutionCorrVtx();
+    double decorrRelMassResolutionWrongVtx();
+    double decorrRelMassResolutionEonly() ;
   
+  public:
+    string sigEoEtransformFile;
+
   private:
     double getRelPhotonResolution(double, const PhotonReducedInfo &);
     
@@ -129,6 +144,11 @@ class MassResolution {
 
     TFile *dz_file;
     TGraph *dz_plot;
+
+    //Decorrelation
+    SigETransform  _sigeTransform;
+    double lead_Eres_decorr;
+    double sublead_Eres_decorr;
 
 };
 

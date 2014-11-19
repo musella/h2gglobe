@@ -1,0 +1,8 @@
+#pT
+VarDef=Mjj
+nVarCategories=4
+JetEtaForDiffAnalysis=4.7
+varCatBoundaries=0.,153.,455,1000.,8000.
+bkgPolOrderByCat=5,5,5,5,5,5,5,5,5,5,5,5,5,5,5
+doOutOfJetAcceptance=1
+

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <stdio.h>
+#include "JetAnalysis/interface/JetHandler.h"
 
 #define PADEBUG 0
 
@@ -38,6 +39,7 @@ StatAnalysis::StatAnalysis()  :
     nTTHhadCategories = 0;
     nTTHlepCategories = 0;
     nCosThetaCategories = 0;
+    nVarCategories = 0;
 
     nVtxCategories = 0;
     R9CatBoundary = 0.94;
@@ -45,6 +47,9 @@ StatAnalysis::StatAnalysis()  :
     fillOptTree = false;
     doFullMvaFinalTree = false;
     doSpinAnalysis = false;
+    doDifferentialAnalysis = false;
+    JetPtForDiffAnalysis = 25.;
+    doOutOfJetAcceptance=0;
     
     runJetsForSpin=false;
     splitwzh=false;
@@ -55,6 +60,11 @@ StatAnalysis::StatAnalysis()  :
     doCosThetaDependentInterferenceSmear=false;
     doPdfWeightSmear=false;
     doPdfWeightSyst=false;
+    
+    jecSmearer = 0;
+    jerSmearer = 0;
+    doJecSyst = false;
+    doJerSyst = false;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -198,6 +208,11 @@ void StatAnalysis::Init(LoopAll& l)
     //    nCategories_=(nInclusiveCategories_+nVBFCategories+nVHhadCategories+nVHlepCategories+nVHmetCategories);  //met at analysis step
     //    nCategories_=(nInclusiveCategories_+nVBFCategories+nVHhadCategories+nVHlepCategories);
     if (doSpinAnalysis) nCategories_*=nCosThetaCategories;
+
+    if (doDifferentialAnalysis){
+	if (doOutOfJetAcceptance) nCategories_*=(nVarCategories+1);
+	else nCategories_*=nVarCategories;
+    }
 
     effSmearPars.categoryType = effPhotonCategoryType;
     effSmearPars.n_categories = effPhotonNCat;
@@ -369,7 +384,34 @@ void StatAnalysis::Init(LoopAll& l)
         l.rooContainer->MakeSystematicStudy(sys,sys_t);
     }
 
-    // ----------------------------------------------------
+    // Jet-related systematics
+    if( doJecSyst ) {
+	if( ! jetHandler_ ) {
+	    jetHandler_ = new JetHandler(jetHandlerCfg, l);
+	}
+	
+	jecSmearer = new JetEnergySmearer(&l, jetHandler_, true);
+	jecSmearer->jerOrJec(true);
+	jecSmearer->name("JEC");
+
+	photonSmearers_.push_back(jecSmearer);
+	systPhotonSmearers_.push_back(jecSmearer);
+        std::vector<std::string> sys(1,jecSmearer->name());
+        std::vector<int> sys_t(1,-1);   // -1 for signal, 1 for background 0 for both
+        l.rooContainer->MakeSystematicStudy(sys,sys_t);
+    }
+    if( doJerSyst ) {
+	assert( doJecSyst );
+	jecSmearer = new JetEnergySmearer(&l, jetHandler_, false);
+	jecSmearer->jerOrJec(false);
+
+	photonSmearers_.push_back(jerSmearer);
+	systPhotonSmearers_.push_back(jerSmearer);
+        std::vector<std::string> sys(1,jerSmearer->name());
+        std::vector<int> sys_t(1,-1);   // -1 for signal, 1 for background 0 for both
+        l.rooContainer->MakeSystematicStudy(sys,sys_t);
+    }
+
     // ----------------------------------------------------
     // Global systematics - Lumi
     l.rooContainer->AddGlobalSystematic("lumi",1.045,1.00);
@@ -780,12 +822,17 @@ bool StatAnalysis::Analysis(LoopAll& l, Int_t jentry)
     }
 
     // Re-apply JEC and / or recompute JetID
-    if(includeVBF || includeVHhad || includeVHhadBtag || includeTTHhad || includeTTHlep) { postProcessJets(l); }
+    if(includeVBF || includeVHhad || includeVHhadBtag || includeTTHhad || includeTTHlep || doDifferentialAnalysis ) { postProcessJets(l); }
 
     // initialize diphoton "selectability" and BDTs for this event
     for(int id=0; id<l.dipho_n; ++id ) {
         l.dipho_sel[id]=false;
         l.dipho_BDT[id]=-10;
+    }
+
+    // Tell photon smearers it's a new event
+    for(std::vector<BaseSmearer *>::iterator  si=systPhotonSmearers_.begin(); si!= systPhotonSmearers_.end(); ++si ) {
+	(*si)->newEvent(&l);
     }
     
     // Analyse the event assuming nominal values of corrections and smearings
@@ -950,7 +997,7 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
 	    float leadptcut=33.;
 	    float subleadptcut=25.;
 	    //	    cout<<"[DEBUG]:before"<<diphoton_id<<endl;
-	    diphoton_id=l.DiphotonMITPreSelection(bdtTrainingType.c_str(),leadptcut,subleadptcut,-0.2,0, &smeared_pho_energy[0],false,false,-100,0,false);
+	    diphoton_id=l.DiphotonMITPreSelection(bdtTrainingType.c_str(),leadptcut,subleadptcut,-0.2,-0.2,0, &smeared_pho_energy[0],false,false,-100,0,false);
 	    //	    cout<<"[DEBUG]:after"<<diphoton_id<<endl;
 
 	    string bdtTrainingPhilosophy="MIT";
@@ -1019,9 +1066,9 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
                 //VHmuevent=MuonTag2012(l, diphotonVHlep_id, &smeared_pho_energy[0],lep_sync);
                 //VHelevent=ElectronTag2012(l, diphotonVHlep_id, &smeared_pho_energy[0],lep_sync);
                 float eventweight = weight * genLevWeight;
-                VHmuevent=MuonTag2012B(l, diphotonVHlep_id, mu_ind, muVtx, VHmuevent_cat, &smeared_pho_energy[0], lep_sync, false, -0.2, eventweight, smeared_pho_weight, !isSyst);
+                VHmuevent=MuonTag2012B(l, diphotonVHlep_id, mu_ind, muVtx, VHmuevent_cat, &smeared_pho_energy[0], lep_sync, false, -0.2,-0.2, eventweight, smeared_pho_weight, !isSyst);
                 if(!VHmuevent){
-                    VHelevent=ElectronTag2012B(l, diphotonVHlep_id, el_ind, elVtx, VHelevent_cat, &smeared_pho_energy[0], lep_sync, false, -0.2, eventweight, smeared_pho_weight, !isSyst);
+                    VHelevent=ElectronTag2012B(l, diphotonVHlep_id, el_ind, elVtx, VHelevent_cat, &smeared_pho_energy[0], lep_sync, false, -0.2, -0.2,eventweight, smeared_pho_weight, !isSyst);
                 }
             }
         }
@@ -1030,7 +1077,7 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
             float eventweight = weight * genLevWeight;
             float myweight=1.;
             if(eventweight*sampleweight!=0) myweight=eventweight/sampleweight;
-	          VHLepTag2013(l, diphotonVHlep_id, VHlep1event, VHlep2event, false, mu_ind, muVtx, VHmuevent_cat, el_ind, elVtx, VHelevent_cat, &smeared_pho_energy[0], phoidMvaCut, eventweight, smeared_pho_weight, isSyst);
+	          VHLepTag2013(l, diphotonVHlep_id, VHlep1event, VHlep2event, false, mu_ind, muVtx, VHmuevent_cat, el_ind, elVtx, VHelevent_cat, &smeared_pho_energy[0], phoidMvaCutEB,phoidMvaCutEE, eventweight, smeared_pho_weight, isSyst);
 	      }
 	
         //Met tag //met at analysis step
@@ -1040,7 +1087,7 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
 	    //        Need a dedicated smearer to evaluated MET systematics.
             /// if( isSyst) VHmetevent=METTag2012B(l, diphotonVHmet_id, met_cat, &smeared_pho_energy[0], met_sync, false, -0.2, true);
 	    /// else 
-	    VHmetevent=METTag2012B(l, diphotonVHmet_id, met_cat, &smeared_pho_energy[0], met_sync, false, -0.2, false);
+	    VHmetevent=METTag2012B(l, diphotonVHmet_id, met_cat, &smeared_pho_energy[0], met_sync, false, -0.2, -0.2,false);
         }
 
         // VBF+hadronic VH
@@ -1157,11 +1204,15 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
         // sanity check
         assert( evweight >= 0. );
 
-        // see if the event falls into an exclusive category
-        computeExclusiveCategory(l, category, diphoton_index, Higgs.Pt(), Higgs.M() );
-
-        // if doing the spin analysis calculate new category
-        if (doSpinAnalysis) computeSpinCategory(l, category, lead_p4, sublead_p4);
+	if (doDifferentialAnalysis) {
+	    computeDifferentialVariableCategory(l, category, lead_p4, sublead_p4, diphoton_id, &smeared_pho_energy[0]);
+	} else {
+	    // see if the event falls into an exclusive category
+	    computeExclusiveCategory(l, category, diphoton_index, Higgs.Pt(), Higgs.M() );
+	    
+	    // if doing the spin analysis calculate new category
+	    if (doSpinAnalysis) computeSpinCategory(l, category, lead_p4, sublead_p4);
+	}
 
         // fill control plots and counters
         if( ! isSyst ) {
@@ -2064,6 +2115,129 @@ void StatAnalysis::computeSpinCategory(LoopAll &l, int &category, TLorentzVector
 
 // ----------------------------------------------------------------------------------------------------
 
+void StatAnalysis::computeDifferentialVariableCategory(LoopAll &l, int &category, TLorentzVector lead_p4, TLorentzVector sublead_p4, int diphoton_id, float* smeared_pho_energy){
+
+    //NICOLAS
+    // Categories: inclusive and jet categories
+
+    int varCategory = -1;
+    //float varValue = 0;
+    TLorentzVector diphoton = lead_p4 + sublead_p4; 
+    
+    varValue = -99;
+
+    int ijet1=-1;
+    int ijet2=-1;
+    bool * jetid_flags;
+    int njet = computeJetVariablesForDifferentialAnalysis(ijet1, ijet2, l, diphoton_id, smeared_pho_energy, jetid_flags, false, JetPtForDiffAnalysis,JetEtaForDiffAnalysis);
+    if (PADEBUG)  std::cout << "njet="<<njet<<" ijet1="<<ijet1<<" ijet2="<<ijet2<<endl;
+		
+    DiffAna_Njets = njet;
+    DiffAna_iJet1=ijet1;
+    DiffAna_iJet2=ijet2;
+    if (njet>=1){
+	TLorentzVector* jet1 = (TLorentzVector*)l.jet_algoPF1_p4->At(ijet1);
+	DiffAna_LeadJetpT = jet1->Pt();
+	DiffAna_dRapidityHiggsJet = fabs(diphoton.Rapidity()-jet1->Rapidity());
+	    
+	if (njet>=2) {
+	    TLorentzVector* jet2 = (TLorentzVector*)l.jet_algoPF1_p4->At(ijet2);
+	    TLorentzVector dijet = (*jet1) + (*jet2);
+	    DiffAna_Mjj = dijet.M();
+	    DiffAna_dEtajj = fabs(jet1->Eta() - jet2->Eta());
+	    DiffAna_Zepp = fabs(diphoton.Eta() - 0.5*(jet1->Eta() + jet2->Eta()));
+	    //double dphi=jet1->Phi()-jet2->Phi();
+	    //if (dphi>TMath::Pi()) dphi=2*TMath::Pi()-dphi;
+	    //if (dphi<-TMath::Pi()) dphi=-2*TMath::Pi()-dphi;
+	    //DiffAna_dPhijj = dphi;
+	    DiffAna_dPhijj = fabs(jet1->DeltaPhi(*jet2));
+	    DiffAna_dPhiggjj = fabs(diphoton.DeltaPhi(dijet));
+	}
+    }
+
+    if (VarDef=="pT") varValue = diphoton.Pt();
+    else if (VarDef=="pToM") varValue = diphoton.Pt()/diphoton.M();
+    else if (VarDef=="pToMscaled") varValue = diphoton.Pt()/diphoton.M()*125.;
+    else if (VarDef=="dPhi") {
+	///double dphi=sublead_p4.Phi()-lead_p4.Phi();
+        //if (dphi>TMath::Pi()) dphi=2*TMath::Pi()-dphi;
+        //if (dphi<-TMath::Pi()) dphi=-2*TMath::Pi()-dphi;
+        varValue = fabs(lead_p4.DeltaPhi(sublead_p4));
+    }
+    else if (VarDef=="CosThetaStar") varValue = TMath::Abs(getCosThetaCS(lead_p4,sublead_p4,l.sqrtS));
+    else if (VarDef=="Ygg") varValue = TMath::Abs(diphoton.Rapidity());
+    else if (VarDef=="Njets" || VarDef=="LeadJetpT" || VarDef=="Mjj" || VarDef=="dPhijj" || VarDef=="Zepp" || VarDef=="dPhiggjj" || VarDef=="dEtajj" || VarDef=="dRapidityHiggsJet" ){
+
+	if (VarDef=="Njets") {
+	    varValue = njet;
+	    if (PADEBUG)  std::cout << "A DiffAna_Njets="<<DiffAna_Njets<<std::endl;
+	}
+	if (njet>=1){
+	    if (VarDef=="LeadJetpT")	{
+		varValue=DiffAna_LeadJetpT;
+	    }
+        if (VarDef=="dRapidityHiggsJet"){
+        varValue=DiffAna_dRapidityHiggsJet;
+        }
+	    if (njet>=2) {
+		if (VarDef=="Mjj")   {
+		    varValue=DiffAna_Mjj;
+		}
+		if (VarDef=="dEtajj") {
+		    varValue=DiffAna_dEtajj;
+		}
+		if (VarDef=="Zepp") {
+		    varValue=DiffAna_Zepp;
+		}
+		if (VarDef=="dPhijj") {
+		    varValue = DiffAna_dPhijj;
+		}
+		if (VarDef=="dPhiggjj") {
+		    varValue=DiffAna_dPhiggjj;
+		}
+	    }
+	}
+    }
+    else {
+        cout << "ERROR -- Var - " << VarDef << " not recognised" << endl;
+        //exit(1);
+	assert(0);
+    }
+
+    if (PADEBUG) {
+        cout << "category="<<category<<" varValue="<<varValue<<endl;
+    }
+
+    if (varCatBoundaries.size()!=nVarCategories+1){
+        cout << "ERROR - varCatBoundaries size does not correspond to nVarCategories" << endl;
+        //exit(1);
+	assert(0);
+    }
+
+    for (int scat=0; scat<nVarCategories; scat++){
+        if (varValue>=varCatBoundaries[scat] && varValue<varCatBoundaries[scat+1]) varCategory=scat;
+    }
+    if ( long(varValue)==long(-99) && doOutOfJetAcceptance) varCategory = nVarCategories;
+
+    if (PADEBUG) {
+	cout << "varValue="<<varValue<<" category="<<category <<" varCategory="<<varCategory<<" (category*nVarCategories)+varCategory="<<(category*nVarCategories)+varCategory<<endl;
+    }
+
+	//cout << "varCategory="<<varCategory<<"category="<<category<<" (category*nVarCategories)+varCategory="<<(category*nVarCategories)+varCategory<<endl; //debug
+
+    if (varCategory==-1) category=-1;
+    else {
+	if (doOutOfJetAcceptance) category = (category*(nVarCategories+1))+varCategory;
+	else category = (category*nVarCategories)+varCategory;
+    }
+    
+
+}
+
+
+
+// ----------------------------------------------------------------------------------------------------
+
 void StatAnalysis::fillControlPlots(const TLorentzVector & lead_p4, const  TLorentzVector & sublead_p4, const TLorentzVector & Higgs,
         float lead_r9, float sublead_r9, int diphoton_id,
         int category, bool isCorrectVertex, float evweight, TVector3* vtx, LoopAll & l,
@@ -2223,7 +2397,7 @@ void StatAnalysis::fillSignalEfficiencyPlots(float weight, LoopAll & l)
 {
     //Fill histograms to use as denominator (kinematic pre-selection only) and numerator (selection applied)
     //for single photon ID efficiency calculation.
-    int diphoton_id_kinpresel = l.DiphotonMITPreSelection(bdtTrainingType.c_str(),leadEtCut,subleadEtCut,-1.,applyPtoverM, &smeared_pho_energy[0],false,true,-100,-1,false );
+    int diphoton_id_kinpresel = l.DiphotonMITPreSelection(bdtTrainingType.c_str(),leadEtCut,subleadEtCut,-1.,-1.,applyPtoverM, &smeared_pho_energy[0],false,true,-100,-1,false );
     if (diphoton_id_kinpresel>-1) {
 
         TLorentzVector lead_p4, sublead_p4, Higgs;
@@ -2469,7 +2643,7 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
         vbfcat=l.DijetSubCategory(myVBF_Mjj,myVBFLeadJPt,myVBFSubJPt,nVBFDijetJetCategories);
     }
 
-    Float_t njets10=0., njets15=0., njets20=0.;
+    Float_t njets10=0., njets15=0., njets20=0.,njets25=0;
     for (Int_t i=0; i<l.jet_algoPF1_n; i++) {
 	Float_t et = ((TLorentzVector*)l.jet_algoPF1_p4->At(i))->Et();
         
@@ -2479,11 +2653,67 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
 	    njets15 += 1.;
 	if (et > 20.)
 	    njets20 += 1.;
+	if (et > 25.)
+	    njets25 += 1.;
     }
 
     l.FillTree("njets10", njets10);
     l.FillTree("njets15", njets15);
     l.FillTree("njets20", njets20);
+    l.FillTree("njets25", njets25);
+
+    if(njets10>0)
+        {
+            l.FillTree("jet1pt",((TLorentzVector*)l.jet_algoPF1_p4->At(0))->Pt());
+            l.FillTree("jet1eta",((TLorentzVector*)l.jet_algoPF1_p4->At(0))->Eta());
+            l.FillTree("jet1phi",((TLorentzVector*)l.jet_algoPF1_p4->At(0))->Phi());
+            l.FillTree("jet1e",((TLorentzVector*)l.jet_algoPF1_p4->At(0))->E());
+        }
+        else{
+            l.FillTree("jet1pt",-999.);
+            l.FillTree("jet1eta",-999.);
+            l.FillTree("jet1phi",-999.);
+            l.FillTree("jet1e",-999.);
+        }
+    if(njets10>1)
+        {
+            l.FillTree("jet2pt",((TLorentzVector*)l.jet_algoPF1_p4->At(1))->Pt());
+            l.FillTree("jet2eta",((TLorentzVector*)l.jet_algoPF1_p4->At(1))->Eta());
+            l.FillTree("jet2phi",((TLorentzVector*)l.jet_algoPF1_p4->At(1))->Phi());
+            l.FillTree("jet2e",((TLorentzVector*)l.jet_algoPF1_p4->At(1))->E());
+        }
+        else{
+            l.FillTree("jet2pt",-999.);
+            l.FillTree("jet2eta",-999.);
+            l.FillTree("jet2phi",-999.);
+            l.FillTree("jet2e",-999.);
+        }
+    if(njets10>2)
+        {
+            l.FillTree("jet3pt",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Pt());
+            l.FillTree("jet3eta",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Eta());
+            l.FillTree("jet3phi",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Phi());
+            l.FillTree("jet3e",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->E());
+        }
+        else{
+            l.FillTree("jet3pt",-999.);
+            l.FillTree("jet3eta",-999.);
+            l.FillTree("jet3phi",-999.);
+            l.FillTree("jet3e",-999.);
+        }
+    if(njets10>3)
+        {
+            l.FillTree("jet4pt",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Pt());
+            l.FillTree("jet4eta",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Eta());
+            l.FillTree("jet4phi",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->Phi());
+            l.FillTree("jet4e",((TLorentzVector*)l.jet_algoPF1_p4->At(2))->E());
+        }
+        else{
+            l.FillTree("jet4pt",-999.);
+            l.FillTree("jet4eta",-999.);
+            l.FillTree("jet4phi",-999.);
+            l.FillTree("jet4e",-999.);
+        }
 
 
     if (vbfIjet1 != -1 && vbfIjet2 !=-1) {
@@ -2532,9 +2762,15 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
     l.FillTree("hoe2", l.pho_hoe[diphoton_index.second]);
     //l.FillTree("conv1", (int)l.pho_isconv[diphoton_index.first]);
     //l.FillTree("conv2", (int)l.pho_isconv[diphoton_index.second]);
-    
-    l.FillTree("sigmaEoE1", (float)l.pho_regr_energyerr[diphoton_index.first]/(float)l.pho_regr_energy[diphoton_index.first]);
-    l.FillTree("sigmaEoE2", (float)l.pho_regr_energyerr[diphoton_index.second]/(float)l.pho_regr_energy[diphoton_index.second]);
+
+	
+    l.FillTree("stdSigmaEoE1", massResolutionCalculator->leadRelPhotonResolution() );
+    l.FillTree("stdSigmaEoE2", massResolutionCalculator->subleadRelPhotonResolution() );
+    l.FillTree("stdSigmaMrvoM", (float)massResolutionCalculator->relMassResolutionEonly());
+    l.FillTree("decorrSigmaEoE1", massResolutionCalculator->decorrLeadRelPhotonResolution() );
+    l.FillTree("decorrSigmaEoE2", massResolutionCalculator->decorrSubleadRelPhotonResolution() );
+    l.FillTree("decorrSigmaMrvoM", (float)massResolutionCalculator->decorrRelMassResolutionEonly());
+
     l.FillTree("ptoM1", (float)lead_p4.Pt()/mass);
     l.FillTree("ptoM2", (float)sublead_p4.Pt()/mass);
     l.FillTree("isEB1", (int)l.pho_isEB[diphoton_index.first]);
@@ -2632,8 +2868,8 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
     ///l.FillTree("eleregr2", r2);
     ///l.FillTree("eleregrerr2", er2);
 
-    //l.FillTree("sceta1", (float)((TVector3*)l.sc_xyz->At(l.pho_scind[diphoton_index.first]))->Eta());
-    //l.FillTree("scphi1", (float)((TVector3*)l.sc_xyz->At(l.pho_scind[diphoton_index.first]))->Phi());
+    l.FillTree("sceta1", (float)((TVector3*)l.sc_xyz->At(l.pho_scind[diphoton_index.first]))->Eta());
+    l.FillTree("scphi1", (float)((TVector3*)l.sc_xyz->At(l.pho_scind[diphoton_index.first]))->Phi());
     l.FillTree("scraw1", l.sc_raw[l.pho_scind[diphoton_index.first]]);
     //l.FillTree("e5x51", l.pho_e5x5[diphoton_index.first]);
     //l.FillTree("e3x31", l.pho_e3x3[diphoton_index.first]);
@@ -2660,8 +2896,8 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
     //l.FillTree("betacry1", (float)999.);
     //l.FillTree("bphicry1", (float)999.);
 
-    //l.FillTree("sceta2", (float)((TVector3*)l.sc_xyz->At(l.pho_scind[diphoton_index.second]))->Eta());
-    //l.FillTree("scphi2", (float)((TVector3*)l.sc_xyz->At(l.pho_scind[diphoton_index.second]))->Phi());
+    l.FillTree("sceta2", (float)((TVector3*)l.sc_xyz->At(l.pho_scind[diphoton_index.second]))->Eta());
+    l.FillTree("scphi2", (float)((TVector3*)l.sc_xyz->At(l.pho_scind[diphoton_index.second]))->Phi());
     l.FillTree("scraw2", l.sc_raw[l.pho_scind[diphoton_index.second]]);
     //l.FillTree("e5x52", l.pho_e5x5[diphoton_index.second]);
     //l.FillTree("e3x32", l.pho_e3x3[diphoton_index.second]);
@@ -2715,6 +2951,18 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
     l.FillTree("dijet_MVA",         myVBF_MVA);
     l.FillTree("bdt_combined",      myVBFcombined);
 
+    l.FillTree("diffAna_iJet1", DiffAna_iJet1);
+    l.FillTree("diffAna_iJet2", DiffAna_iJet2);
+
+    l.FillTree("diffAna_Njets", DiffAna_Njets);
+    l.FillTree("diffAna_LeadJetpT", DiffAna_LeadJetpT);
+    l.FillTree("diffAna_dRapidityHiggsJet", DiffAna_dRapidityHiggsJet);
+    l.FillTree("diffAna_Mjj", DiffAna_Mjj);
+    l.FillTree("diffAna_dEtajj", DiffAna_dEtajj);
+    l.FillTree("diffAna_Zepp", DiffAna_Zepp);
+    l.FillTree("diffAna_dPhijj", DiffAna_dPhijj);
+    l.FillTree("diffAna_dPhiggjj", DiffAna_dPhiggjj);
+
     l.FillTree("issyst", (int)isSyst);
     l.FillTree("name1", name1);
 
@@ -2723,7 +2971,7 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
         std::vector<int> & vtxlist = l.vtx_std_ranked_list->at(diphoton_id);
         l.FillTree("sigmaMrvoM", (float)sigmaMrv);
         l.FillTree("sigmaMwvoM", (float)sigmaMwv);
-        
+	
         //if (l.itype[l.current] == 3) {
         //    Int_t bin = weightHist->FindBin((float)Higgs.Pt());
         //    Float_t myweight = weightHist->GetBinContent(bin);
@@ -2752,6 +3000,160 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
         l.FillTree("dipho_mva_cat", (float)category);
         if (diphobdt_output>=bdtCategoryBoundaries.back()) computeExclusiveCategory(l,category,diphoton_index,Higgs.Pt(),Higgs.M(),diphobdt_output); 
     }
+    //compute gen observables -- only sig
+	int cur_type = l.itype[l.current];
+    if(cur_type<0){ //GEN -- for the moment some cut are hard written
+        int is_bkg=0;
+	    map<float,int,std::greater<float> > phoHiggs;
+
+	    for(int igp=0;igp< l.gp_n ;igp++)
+	    {
+	    	if ( l.gp_status[igp] != 1) continue;
+	    	if ( l.gp_pdgid[igp] != 22 ) continue;
+	    	//find a 25 in the full mother chain
+	    	bool isHiggsSon=false;
+	    	for( int mother=l.gp_mother[igp]; mother>=0 && mother != l.gp_mother[mother]  ;mother=l.gp_mother[mother])
+	    	{
+	    		if (l.gp_pdgid[mother] == 25) isHiggsSon=true;
+	    	}
+	    	if( !isHiggsSon) continue;
+	    	phoHiggs[ ((TLorentzVector*)l.gp_p4->At(igp))->Pt() ]=igp;
+	    }
+	    if( phoHiggs.size()<2) is_bkg = 1; // higgs photons does not exist
+
+        if ( !is_bkg) {
+	        map<float,int,std::greater<float> >::iterator iPho=phoHiggs.begin();
+	        int pho1=iPho->second;
+	        iPho++;
+	        int pho2=iPho->second;
+	        TLorentzVector g1=*((TLorentzVector*)l.gp_p4->At(pho1));
+	        TLorentzVector g2=*((TLorentzVector*)l.gp_p4->At(pho2));
+	        TLorentzVector Hgg = g1+g2;
+	        if( g1.Pt()/Hgg.M() < 1./3. ) is_bkg=2;
+	        if( fabs(g1.Eta()) > 2.5 ) is_bkg = 3;
+	        if( g2.Pt()/Hgg.M() < 1./4.) is_bkg=4;
+	        if( fabs(g2.Eta()) > 2.5 ) is_bkg=6;
+
+	    //compute isolation for photons
+	         float pho1Iso=0,pho2Iso=0;
+	        for(int igp=0;igp< l.gp_n ;igp++)
+              {
+	          if ( l.gp_status[igp] != 1) continue;
+	          if ( l.gp_pdgid[igp] == 12 || l.gp_pdgid[igp]==14 || l.gp_pdgid[igp]==16) continue; //neutrinos
+	          if ( g1.DeltaR( *((TLorentzVector*)(l.gp_p4->At(igp))) ) < 0.4 && pho1 !=igp ) pho1Iso += ((TLorentzVector*)(l.gp_p4->At(igp)))->Pt();
+	          if ( g2.DeltaR( *((TLorentzVector*)(l.gp_p4->At(igp))) ) < 0.4 && pho2 !=igp ) pho2Iso += ((TLorentzVector*)(l.gp_p4->At(igp)))->Pt();
+              }
+//th    ey are matched to the higgs, so I don't need to consider more photons if not pass the preselection
+
+	       // if(pho1Iso >= PhoIsoDiffAnalysis || pho2Iso >= PhoIsoDiffAnalysis) is_bkg=7;
+	        float Ht=0;
+	        int nJets=0;
+	        map<float,int,std::greater<float> > jets;
+
+            float JetPtForDiffAnalysis=25.;
+            float JetPhoDRDiffAnalysis=0.5;
+
+    	    for(int iJet=0 ;iJet<l.genjet_algo1_n;iJet++)
+    	    {
+    	    	if (  fabs(((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Eta() )> JetEtaForDiffAnalysis ) continue;
+    	    	if ( ((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->DeltaR(g1) < JetPhoDRDiffAnalysis  ) continue;
+    	    	if ( ((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->DeltaR(g2) < JetPhoDRDiffAnalysis  ) continue;
+                
+
+                //don't ask for pt of jets to save informations, but care only for njets and Ht
+    	    	float pt=((TLorentzVector*)l.genjet_algo1_p4->At(iJet))->Pt();
+    	    	jets[ pt ] = iJet;
+    	    	if (  ((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Pt() < JetPtForDiffAnalysis ) continue;
+    	    	//DR Cut wrt photons
+    	    
+    	    	//GEN JET is good
+    	    	Ht+=pt;
+    	    	nJets+=1;
+    	    }
+
+        //Fill Opt tree
+        l.FillTree("mH_GEN", (float)Hgg.M());
+        l.FillTree("pTH_GEN", (float)Hgg.Pt());
+        l.FillTree("pho1pt_GEN", (float)g1.Pt());
+        l.FillTree("pho2pt_GEN", (float)g2.Pt());
+        l.FillTree("etaH_GEN", (float)Hgg.Eta());
+        l.FillTree("phiH_GEN", (float)Hgg.Phi());
+        l.FillTree("pho1eta_GEN", (float)g1.Eta());
+        l.FillTree("pho2eta_GEN", (float)g2.Eta());
+        l.FillTree("pho1phi_GEN", (float)g1.Phi());
+        l.FillTree("pho2phi_GEN", (float)g2.Phi());
+        l.FillTree("pho1iso_GEN", (float)pho1Iso);
+        l.FillTree("pho2iso_GEN", (float)pho2Iso);
+        l.FillTree("nJets_GEN", (float)nJets);
+        l.FillTree("Ht_GEN", (float)Ht);
+        map<float,int>::const_iterator jet_it=jets.begin();
+        if(jets.size() >0 )
+            {
+            int iJet=jet_it->second;
+            l.FillTree("jet1pt_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Pt());
+            l.FillTree("jet1eta_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Eta());
+            l.FillTree("jet1phi_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Phi());
+            }
+            else{
+            l.FillTree("jet1pt_GEN",(float) -999.);
+            l.FillTree("jet1eta_GEN",(float)-999.);
+            l.FillTree("jet1phi_GEN",(float)-999.);
+            }
+        if(jets.size() >1 )
+            {
+            jet_it++;
+            int iJet=jet_it->second;
+            l.FillTree("jet2pt_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Pt());
+            l.FillTree("jet2eta_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Eta());
+            l.FillTree("jet2phi_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Phi());
+            }
+            else{
+            l.FillTree("jet2pt_GEN",(float) -999.);
+            l.FillTree("jet2eta_GEN",(float)-999.);
+            l.FillTree("jet2phi_GEN",(float)-999.);
+            }
+        if(jets.size() >2 )
+            {
+            jet_it++;
+            int iJet=jet_it->second;
+            l.FillTree("jet3pt_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Pt());
+            l.FillTree("jet3eta_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Eta());
+            l.FillTree("jet3phi_GEN", (float)((TLorentzVector*)l.genjet_algo1_p4->At(iJet) )->Phi());
+            }
+            else{
+            l.FillTree("jet3pt_GEN",(float) -999.);
+            l.FillTree("jet3eta_GEN",(float)-999.);
+            l.FillTree("jet3phi_GEN",(float)-999.);
+            }
+        } //is bkg no two photons
+        else{
+            l.FillTree("mH_GEN",-999.);
+            l.FillTree("pTH_GEN",-999.);
+            l.FillTree("pho1pt_GEN",-999.);
+            l.FillTree("pho2pt_GEN",-999.);
+            l.FillTree("etaH_GEN",-999.);
+            l.FillTree("pho1eta_GEN",-999.);
+            l.FillTree("pho2eta_GEN",-999.);
+            l.FillTree("phiH_GEN",-999.);
+            l.FillTree("pho1phi_GEN",-999.);
+            l.FillTree("pho2phi_GEN",-999.);
+            l.FillTree("pho1iso_GEN",999.); //>0
+            l.FillTree("pho2iso_GEN",999.);
+            l.FillTree("nJets_GEN",-999.);
+            l.FillTree("Ht_GEN",-999.);
+            l.FillTree("jet1pt_GEN",(float) -999.);
+            l.FillTree("jet1eta_GEN",(float)-999.);
+            l.FillTree("jet1phi_GEN",(float)-999.);
+            l.FillTree("jet2pt_GEN",(float) -999.);
+            l.FillTree("jet2eta_GEN",(float)-999.);
+            l.FillTree("jet2phi_GEN",(float)-999.);
+            l.FillTree("jet3pt_GEN",(float) -999.);
+            l.FillTree("jet3eta_GEN",(float)-999.);
+            l.FillTree("jet3phi_GEN",(float)-999.);
+            //fill with -999
+        }
+    l.FillTree("is_bkg_GEN",(float)is_bkg);
+    } //END GEN
 };
 
 

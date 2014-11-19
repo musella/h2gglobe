@@ -46,7 +46,7 @@ MainFullDicts=
 ##
 ## Subdirectories
 ##
-SubPkgs=PhotonAnalysis VertexAnalysis VertexOptimization JetAnalysis PhotonJetAnalysis ZMuMuGammaAnalysis CategoryOptimizer FutureAnalysis
+SubPkgs=PhotonAnalysis VertexAnalysis VertexOptimization JetAnalysis PhotonJetAnalysis ZMuMuGammaAnalysis CategoryOptimizer FutureAnalysis UnfoldAnalysis
 SubPkgsDict=VertexAnalysis/interface/VertexAlgoParameters.h 
 SubPkgsFullDicts=CategoryOptimizer/interface/*.$(HeadSuf)
 
@@ -56,7 +56,7 @@ SubPkgsFullDicts=CategoryOptimizer/interface/*.$(HeadSuf)
 CXXFLAGS+=-DH2GGLOBE_BASE=\"$(CURDIR)\"
 ROOFIT_BASE=$(ROOFITSYS)
 LDFLAGS+=-L$(ROOFIT_BASE)/lib $(ROOTLIBS) -lRooFitCore -lRooFit -lTMVA -lPyROOT
-LDFLAGS+= $(patsubst %, -L%, $(shell echo ${LD_LIBRARY_PATH} | tr ':' '\n')) -lFWCorePythonParameterSet -lFWCoreParameterSet -lCMGToolsExternal -lCondFormatsJetMETObjects -lHiggsAnalysisGBRLikelihood -lHiggsAnalysisCombinedLimit
+LDFLAGS+= $(patsubst %, -L%, $(shell echo ${LD_LIBRARY_PATH} | tr ':' '\n')) -lFWCorePythonParameterSet -lFWCoreParameterSet -lCMGToolsExternal -lCondFormatsJetMETObjects -lHiggsAnalysisGBRLikelihood  -l HiggsAnalysisGBRLikelihoodEGTools -lHiggsAnalysisCombinedLimit
 CXXFLAGS+=-I$(ROOFIT_BASE)/include -I$(CMSSW_BASE)/src  -I$(CMSSW_RELEASE_BASE)/src 
 CXXFLAGS+= $(patsubst %, -I%, $(shell echo ${CMSSW_FWLITE_INCLUDE_PATH} | tr ':' '\n'))
 CXXFLAGS+=-I$(shell pwd) -g
