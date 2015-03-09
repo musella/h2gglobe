@@ -202,8 +202,21 @@ bool VertexOptimizationAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float we
     applySinglePhotonSmearings(smeared_pho_energy, smeared_pho_r9, smeared_pho_weight, cur_type, l, energyCorrected, energyCorrectedError,
 			       phoSys, syst_shift);
     
-    diphoton_id = l.DiphotonCiCSelection(l.phoNOCUTS, l.phoNOCUTS, leadEtCut, subleadEtCut, 4,applyPtoverM, &smeared_pho_energy[0] ); 
-
+    /// diphoton_id = l.DiphotonCiCSelection(l.phoNOCUTS, l.phoNOCUTS, leadEtCut, subleadEtCut, 4,applyPtoverM, &smeared_pho_energy[0] ); 
+    diphoton_id = -1;
+    if( l.dipho_n > 0 ) { 
+	for(int idipho=0; idipho<l.dipho_n; ++idipho) {
+	    int leadInd = l.dipho_leadind[idipho];
+	    int subleadInd = l.dipho_subleadind[idipho];
+	    if( ! l.pho_genmatched[leadInd] || ! l.pho_genmatched[subleadInd] ) { continue; }
+	    double leadPt    = l.get_pho_p4(leadInd,0,&smeared_pho_energy[0]).Pt();
+	    double subleadPt = l.get_pho_p4(subleadInd,0,&smeared_pho_energy[0]).Pt();
+	    if( subleadPt > leadPt ) { std::swap(leadPt,subleadPt); }
+	    if( leadPt > leadEtCut && subleadPt > subleadEtCut ) { diphoton_id = idipho; break; }
+	}
+    }
+    /// cout << diphoton_id << endl;
+    
     TVector3 * genVtx = (TVector3*)l.gv_pos->At(0);
     if (diphoton_id > -1 ) {
 	int closest_id = -1;

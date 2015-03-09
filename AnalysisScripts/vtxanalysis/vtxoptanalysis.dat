@@ -2,3 +2,23 @@
 ## uFileName=vtxOptx.root
 
 doMCSmearing=0
+doEcorrectionSmear=1
+doEresolSmear=0
+doEresolSyst=0
+doEscaleSmear=0
+doEscaleSyst=0
+doInterferenceSmear=0
+doMCSmearing=0
+doPhotonIdEffSmear=0
+doPhotonIdEffSyst=0
+doR9Smear=0
+doR9Syst=0
+doTriggerEffSmear=0
+doTriggerEffSyst=0
+doTriggerSelection=0
+doVtxEffSmear=0
+doVtxEffSyst=0
+puLumis=
+puTarget=
+puTargets=
+sigPointsToBook=125

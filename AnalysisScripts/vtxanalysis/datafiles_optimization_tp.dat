@@ -1,0 +1,26 @@
+intL=3.e+6 histfile=vertexOptimization.root output=shifo.root
+
+#
+# Signal samples
+#
+
+typ=-1 ind=1 draw=1   Nam=ggh_m125_8TeV   		CaDir=/store/group/phys_higgs/cmshgg/reduced/Phase2_samples/TechProp_2014/GluGluToHToGG_M-125_14TeV-powheg-pythia6_TP2023SHCALDR-SHCALJan23_PU140BX25_PH2_1K_FB_V6-v5
+
+##
+## Branches to use
+##
+inputBranches vtxanalysis/tp_minimal_input.dat
+
+plotvariables plotvariables_none.dat
+cuts cuts_none.dat
+
+## define analyses to run
+## 	a library containing the class dictionary has loaded before parsing the 
+## 	configuration file
+## syntax:
+## 	analyzer <class_name> <config_file>
+## 
+## analyzer PhotonAnalysis photonanalysis.dat	
+analyzer VertexOptimizationAnalysis photonanalysis.dat analysis_settings.dat statanalysis.dat puHist= minBiasRefName= sigPointsToBook=125 vtxanalysis/vtxoptanalysis.dat
+
+## vtxanalysis/tp.dat
