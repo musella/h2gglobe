@@ -5,14 +5,28 @@
 from optparse import OptionParser, make_option
 import fnmatch, glob, os, sys, json, itertools
 
+objs = []
+
 ## ------------------------------------------------------------------------------------------------------------------------------------------------------
-def mkChain(files, name="vtxOptTree"):
+def mkChain(files, name="vtxOptTree",aliases={}):
+    ### if len(files) == 1:
+    ###     from ROOT import TFile
+    ###     f = TFile.Open(files[0])
+    ###     objs.append(f)
+    ###     t=f.Get(name)
+    ###     objs.append(t)
+    ###     return t
     from ROOT import TChain
     chain = TChain(name)
     for f in files:
         print "Adding file %s" % f
         chain.AddFile(f)
+    setAliases(chain,aliases)
     return chain
+
+def setAliases(tree,aliases):
+    for name,vdef in aliases.iteritems():
+        tree.SetAlias(name,vdef)
 
 ## ------------------------------------------------------------------------------------------------------------------------------------------------------
 def getListOfFiles( baseDir, filePattern, expr="{baseDir}/{filePattern}"):
@@ -97,11 +111,36 @@ def main(o,args):
 
     # load tree
     selection = TCut(o.selection)
+    aliases = {}
+    for a in o.aliases:
+        name,vdef = [ str(t.lstrip(" ").rstrip(" ")) for t in a.split(":=",1) ]
+        aliases[name] = vdef
+
+    if len(o.categories) > 0:
+        allcats="(%s)" % ")||(".join([ c[0] for c in o.categories])
+        print allcats
+        selection = selection*TCut(allcats)
+    tmp = TFile.Open("/tmp/musella/tmp%s.root"%o.label,"recreate")
     for evclass,info in o.classes.iteritems():
         samples = info["samples"]
-        for name,weight,cut,ttype in samples:
+        for samp in samples:
+            if len(samp) == 4:
+                name,weight,cut,ttype = samp
+                friend = None
+            else:
+                name,weight,cut,ttype,friend = samp
             tcut=TCut(cut)*selection
-            factory.AddTree( mkChain(getListOfFiles(o.indir,o.files), name), str(evclass), float(weight), tcut, int(ttype) )
+            fullTree = mkChain(getListOfFiles(o.indir,o.files), name, aliases)
+            selTree = fullTree.CopyTree(tcut.GetTitle())
+            if friend:
+                fname,tname = friend.split("::")
+                friend = mkChain(getListOfFiles(o.indir,fname),tname)
+                friend.AddFriend(fullTree)
+                selFriend = friend.CopyTree(tcut.GetTitle())
+                selTree.AddFriend(selFriend,"fr")
+                ## selTree.Scan(info["weight"],"","",10)
+            setAliases(selTree,aliases)
+            factory.AddTree( selTree, str(evclass), float(weight), TCut(""), int(ttype) )
         # weights
         if "weight" in info:
             weight = info["weight"]
@@ -116,7 +155,6 @@ def main(o,args):
                                         "SplitMode=Random:NormMode=NumEvents:!V" )
     
     # --------------------------------------------------------------------------------------------------
-    # Fisher discriminant (same as LD)
     defaultSettings = { "BDT" :  "!H:!V:!CreateMVAPdfs:BoostType=Grad:UseBaggedGrad"
                                  ":GradBaggingFraction=0.6:SeparationType=GiniIndex:nCuts=20:NNodesMax=5"
                                  ":Shrinkage=0.3:NTrees=1000",
@@ -133,13 +171,13 @@ def main(o,args):
                             "!H:!V:Fisher:!CreateMVAPdfs:VarTransform=D"
                             )
 
-    if "Fisher" in o.methods:
-        mname =  "Fisher%s" % o.label
+    if "Fisher" in o.methods or "LD" in o.methods:
+        mname =  str("Fisher%s" % o.label)
         fcats = factory.BookMethod( TMVA.Types.kCategory, mname )
         
         for cut,name,vars in categories:        
             print "booking sub-category classifier : %s %s %s" % ( cut, name, vars )
-            fcats.AddMethod(cut,
+            fcats.AddMethod(TCut(cut),
                             vars,TMVA.Types.kFisher,"%s_%s" % (mname,name),
                             "!H:!V:Fisher:!CreateMVAPdfs"
                             )
@@ -167,7 +205,7 @@ def main(o,args):
                             )
 
     if "BDT" in o.methods:
-        mname =  "BDT%s" % o.label
+        mname =  str("BDT%s" % o.label)
         settings = defaultSettings["BDT"]
         if hasattr(o,"settings") and "BDT" in o.settings:
             settings = str(o.settings["BDT"])
@@ -182,7 +220,7 @@ def main(o,args):
                                vars,TMVA.Types.kBDT,"%s_%s" % (mname,name),settings)
 
     if "Cuts" in o.methods:
-        mname =  "Cuts%s" % o.label
+        mname =  str("Cuts%s" % o.label)
         settings = defaultSettings["Cuts"]
         if hasattr(o,"settings") and "Cuts" in o.settings:
             settings = str(o.settings["Cuts"])
@@ -244,6 +282,11 @@ if __name__ == "__main__":
             make_option("-V", "--variables",
                         action="store", dest="variables", type="string",
                         default="",
+                        help="list of variables"
+                        ),
+            make_option("-A", "--aliases",
+                        action="store", dest="aliases", type="string",
+                        default={},
                         help="list of variables"
                         ),
             make_option("-T", "--tmvaSettings",
