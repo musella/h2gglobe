@@ -127,6 +127,7 @@ class LoopAll {
   // Zee Validaton Flag
   bool runZeeValidation;
   bool applyEcalIsoPresel;
+  bool ignoreMVAPreselection;
   bool makeDummyTrees;
   Float_t * pho_r9_cic;
   std::string cicVersion;
@@ -771,6 +772,7 @@ std::vector<int> * pu_ntrks_highpt;
 
 bool pho_idmva_cached;
 float pho_idmva[MAX_PHOTONS][MAX_VERTICES];
+
 
 #define MAX_DIPHOTONS 50
 Int_t dipho_n;

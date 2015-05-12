@@ -55,6 +55,8 @@ StatAnalysis::StatAnalysis()  :
     doCosThetaDependentInterferenceSmear=false;
     doPdfWeightSmear=false;
     doPdfWeightSyst=false;
+
+    phoidMvaCut = -2.;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -418,6 +420,46 @@ void StatAnalysis::Init(LoopAll& l)
 
     // Make sure the Map is filled
     FillSignalLabelMap(l);
+
+    // Initialize all MVA ---------------------------------------------------//
+    if( useGbrDiphotonMva ) {
+	TFile * fin = TFile::Open(gbrDiphotonFile.c_str());
+	RooWorkspace * ws = (RooWorkspace*) (fin->Get("wsfitmc")->Clone());
+	fin->Close();
+	l.funcReader_dipho_MIT = new RooFuncReader(ws,"sigxxb","trainingvars");
+    }
+    l.SetAllMVA();
+    if( ! useGbrDiphotonMva ) {
+	l.tmvaReader_dipho_MIT->BookMVA("Gradient"   ,eventLevelMvaMIT.c_str());
+    }
+    // UCSD
+    l.tmvaReaderID_UCSD->BookMVA("Gradient"      ,photonLevelMvaUCSD.c_str()  );
+    //// l.tmvaReader_dipho_UCSD->BookMVA("Gradient"  ,eventLevelMvaUCSD.c_str()   );
+
+    // 2013 ID MVA
+    if( photonLevel2013IDMVA_EB != "" && photonLevel2013IDMVA_EE != "" ) {
+	l.tmvaReaderID_2013_Barrel->BookMVA("AdaBoost",photonLevel2013IDMVA_EB.c_str());
+	l.tmvaReaderID_2013_Endcap->BookMVA("AdaBoost",photonLevel2013IDMVA_EE.c_str());
+    } else if( photonLevel2012IDMVA_EB != "" && photonLevel2012IDMVA_EE != "" ) {
+    	l.tmvaReaderID_Single_Barrel->BookMVA("AdaBoost",photonLevel2012IDMVA_EB.c_str());
+    	l.tmvaReaderID_Single_Endcap->BookMVA("AdaBoost",photonLevel2012IDMVA_EE.c_str());
+	assert( bdtTrainingType == "Moriond2013" ); 
+    } else if (photonLevel2013_7TeV_IDMVA_EB != "" && photonLevel2013_7TeV_IDMVA_EE != "" ) {
+    	l.tmvaReaderID_2013_7TeV_MIT_Barrel->BookMVA("AdaBoost",photonLevel2013_7TeV_IDMVA_EB.c_str());
+    	l.tmvaReaderID_2013_7TeV_MIT_Endcap->BookMVA("AdaBoost",photonLevel2013_7TeV_IDMVA_EE.c_str());
+    } else { 
+    	assert( run7TeV4Xanalysis );
+    }
+
+    // MIT 
+    if( photonLevel2011IDMVA_EB != "" && photonLevel2011IDMVA_EE != "" ) {
+    	l.tmvaReaderID_MIT_Barrel->BookMVA("AdaBoost",photonLevel2011IDMVA_EB.c_str());
+    	l.tmvaReaderID_MIT_Endcap->BookMVA("AdaBoost",photonLevel2011IDMVA_EE.c_str());
+	assert(bdtTrainingType == "Old7TeV");
+    } else {
+    	assert( ! run7TeV4Xanalysis );
+    }
+
 
     if(PADEBUG)
         cout << "InitRealStatAnalysis END"<<endl;
@@ -931,7 +973,7 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
         smeared_pho_weight.clear(); smeared_pho_weight.resize(l.pho_n,1.);
         applySinglePhotonSmearings(smeared_pho_energy, smeared_pho_r9, smeared_pho_weight, cur_type, l, energyCorrected, energyCorrectedError,
                 phoSys, syst_shift);
-
+	
         // Fill CiC efficiency plots for ggH, mH=124
         //fillSignalEfficiencyPlots(weight, l);
 
@@ -939,10 +981,18 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
         // FIXME pass smeared R9
         std::vector<bool> veto_indices;
         veto_indices.clear();
-        diphoton_id = l.DiphotonCiCSelection(l.phoSUPERTIGHT, l.phoSUPERTIGHT, leadEtCut, subleadEtCut, 4,applyPtoverM, &smeared_pho_energy[0], false, -1, veto_indices, cicCutLevels );
-        //// diphoton_id = l.DiphotonCiCSelection(l.phoNOCUTS, l.phoNOCUTS, leadEtCut, subleadEtCut, 4,applyPtoverM, &smeared_pho_energy[0] );
-
-
+		for(int ii=0; ii<l.dipho_n; ++ii) {
+	    l.dipho_BDT[ii]=1.;
+	}
+		if( phoidMvaCut > -2. ) { 
+	    diphoton_id = l.DiphotonMITPreSelection(bdtTrainingType.c_str(),leadEtCut,subleadEtCut,phoidMvaCut,applyPtoverM, 
+						    &smeared_pho_energy[0], false, false, 
+						    -2.);
+	} else {
+	    diphoton_id = l.DiphotonCiCSelection(l.phoSUPERTIGHT, l.phoSUPERTIGHT, leadEtCut, subleadEtCut, 4,applyPtoverM, &smeared_pho_energy[0], false, -1, veto_indices, cicCutLevels );
+	    //// diphoton_id = l.DiphotonCiCSelection(l.phoNOCUTS, l.phoNOCUTS, leadEtCut, subleadEtCut, 4,applyPtoverM, &smeared_pho_energy[0] );
+	}
+	
 	/*--------------------code to run mva diphot Id and save it to a tree. useful for optimization of VHlep/had and TTH--------*/
 	float diphoMVA=-999;
 	if(optimizeMVA){
@@ -968,24 +1018,24 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
 	    if(lead_p4.Pt()>0.1 && sublead_p4.Pt()>0.1 && l.dipho_leadind[diphoton_id] < l.pho_n && l.dipho_subleadind[diphoton_id]< l.pho_n){
 		diphoMVA=getDiphoBDTOutput(l,diphoton_id,  lead_p4, sublead_p4,  bdtTrainingPhilosophy);
 	    }
-	}
+	    	}
 
 	l.diPhotonBDTOutput=diphoMVA;
-
+	
 	/*--------------------------------------------------------------------------------------*/
 
 
-        // N-1 plots
-        if( ! isSyst ) {
-            int diphoton_nm1_id = l.DiphotonCiCSelection(l.phoSUPERTIGHT, l.phoNOCUTS, leadEtCut, subleadEtCut, 4,applyPtoverM, &smeared_pho_energy[0] );
-            if(diphoton_nm1_id>-1) {
-                float eventweight = weight * smeared_pho_weight[diphoton_index.first] * smeared_pho_weight[diphoton_index.second] * genLevWeight;
-                float myweight=1.;
-                if(eventweight*sampleweight!=0) myweight=eventweight/sampleweight;
-                ClassicCatsNm1Plots(l, diphoton_nm1_id, &smeared_pho_energy[0], eventweight, myweight);
-            }
-        }
-
+        //// // N-1 plots
+        //// if( ! isSyst ) {
+        ////     int diphoton_nm1_id = l.DiphotonCiCSelection(l.phoSUPERTIGHT, l.phoNOCUTS, leadEtCut, subleadEtCut, 4,applyPtoverM, &smeared_pho_energy[0] );
+        ////     if(diphoton_nm1_id>-1) {
+        ////         float eventweight = weight * smeared_pho_weight[diphoton_index.first] * smeared_pho_weight[diphoton_index.second] * genLevWeight;
+        ////         float myweight=1.;
+        ////         if(eventweight*sampleweight!=0) myweight=eventweight/sampleweight;
+        ////         ClassicCatsNm1Plots(l, diphoton_nm1_id, &smeared_pho_energy[0], eventweight, myweight);
+        ////     }
+        //// }
+	//// 
         // Exclusive Modes
 	diphotonVBF_id = -1;
 	diphotonVHhad_id = -1;
@@ -1007,7 +1057,7 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
 	    TTHlepevent = false;
         VHmetevent = false; //met at analysis step
 
-        // lepton tag
+	        // lepton tag
         if(includeVHlep){
             //Add tighter cut on dr to tk
             if(run7TeV4Xanalysis){
@@ -1108,27 +1158,27 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
         }
         // End exclusive mode selection
     }
-
+    
     //// std::cout << isSyst << " " << diphoton_id << " " << sumaccept << std::endl;
 
     // if we selected any di-photon, compute the Higgs candidate kinematics
     // and compute the event category
     if (diphoton_id > -1 ) {
-        diphoton_index = std::make_pair( l.dipho_leadind[diphoton_id],  l.dipho_subleadind[diphoton_id] );
+	        diphoton_index = std::make_pair( l.dipho_leadind[diphoton_id],  l.dipho_subleadind[diphoton_id] );
 
         // bring all the weights together: lumi & Xsection, single gammas, pt kfactor
         evweight = weight * smeared_pho_weight[diphoton_index.first] * smeared_pho_weight[diphoton_index.second] * genLevWeight;
         if( ! isSyst ) {
             l.countersred[diPhoCounter_]++;
         }
-
+	
         TLorentzVector lead_p4, sublead_p4, Higgs;
         float lead_r9, sublead_r9;
         TVector3 * vtx;
         
         // should call this guy once by setting vertex above
         fillDiphoton(lead_p4, sublead_p4, Higgs, lead_r9, sublead_r9, vtx, &smeared_pho_energy[0], l, diphoton_id);
-
+	
 	
         // apply beamspot reweighting if necessary
         if(reweighBeamspot && cur_type!=0) {
@@ -1143,7 +1193,7 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
         // FIXME pass smeared R9
         category = l.DiphotonCategory(diphoton_index.first,diphoton_index.second,Higgs.Pt(),Higgs.Pt()/Higgs.M(),nEtaCategories,nR9Categories,R9CatBoundary,nPtCategories,nPtOverMCategories,nVtxCategories,l.vtx_std_n);
         mass     = Higgs.M();
-
+	
         // apply di-photon level smearings and corrections
         int selectioncategory = l.DiphotonCategory(diphoton_index.first,diphoton_index.second,Higgs.Pt(),Higgs.Pt()/Higgs.M(),nEtaCategories,nR9Categories,R9CatBoundary,0,0,nVtxCategories,l.vtx_std_n);
         if( cur_type != 0 && doMCSmearing ) {
@@ -1151,7 +1201,7 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
                     diPhoSys, syst_shift);
             isCorrectVertex=(*vtx- *((TVector3*)l.gv_pos->At(0))).Mag() < 1.;
         }
-
+	
         float ptHiggs = Higgs.Pt();
         //if (cur_type != 0) cout << "vtxAn: " << isCorrectVertex << endl;
         // sanity check
@@ -1159,32 +1209,32 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
 
         // see if the event falls into an exclusive category
         computeExclusiveCategory(l, category, diphoton_index, Higgs.Pt(), Higgs.M() );
-
+	
         // if doing the spin analysis calculate new category
         if (doSpinAnalysis) computeSpinCategory(l, category, lead_p4, sublead_p4);
-
-        // fill control plots and counters
-        if( ! isSyst ) {
-            l.FillCounter( "Accepted", weight );
-            l.FillCounter( "Smeared", evweight );
-            sumaccept += weight;
-            sumsmear += evweight;
-            fillControlPlots(lead_p4, sublead_p4, Higgs, lead_r9, sublead_r9, diphoton_id,
-                    category, isCorrectVertex, evweight, vtx, l, muVtx, mu_ind, elVtx, el_ind );
-
-            if (fillOptTree) {
-                fillOpTree(l, lead_p4, sublead_p4, -2, diphoton_index, diphoton_id, -2, -2, weight, 
-                        mass, -1, -1, Higgs, -2, category, VBFevent, myVBF_Mjj, myVBFLeadJPt, 
-                        myVBFSubJPt, nVBFDijetJetCategories, isSyst, "no-syst");
-            }
-        }
-        // dump BS trees if requested
-        if (!isSyst && cur_type!=0 && saveBSTrees_) saveBSTrees(l, evweight,category,Higgs, vtx, (TVector3*)l.gv_pos->At(0));
+	
+        //// // fill control plots and counters
+        //// if( ! isSyst ) {
+        ////     l.FillCounter( "Accepted", weight );
+        ////     l.FillCounter( "Smeared", evweight );
+        ////     sumaccept += weight;
+        ////     sumsmear += evweight;
+        ////     fillControlPlots(lead_p4, sublead_p4, Higgs, lead_r9, sublead_r9, diphoton_id,
+        ////             category, isCorrectVertex, evweight, vtx, l, muVtx, mu_ind, elVtx, el_ind );
+	//// 
+        ////     if (fillOptTree) {
+        ////         fillOpTree(l, lead_p4, sublead_p4, -2, diphoton_index, diphoton_id, -2, -2, weight, 
+        ////                 mass, -1, -1, Higgs, -2, category, VBFevent, myVBF_Mjj, myVBFLeadJPt, 
+        ////                 myVBFSubJPt, nVBFDijetJetCategories, isSyst, "no-syst");
+        ////     }
+        //// }
+        //// // dump BS trees if requested
+        //// if (!isSyst && cur_type!=0 && saveBSTrees_) saveBSTrees(l, evweight,category,Higgs, vtx, (TVector3*)l.gv_pos->At(0));
 
         // save trees for unbinned datacards
         int inc_cat = l.DiphotonCategory(diphoton_index.first,diphoton_index.second,Higgs.Pt(),Higgs.Pt()/Higgs.M(),nEtaCategories,nR9Categories,R9CatBoundary,nPtCategories,nPtOverMCategories,nVtxCategories,l.vtx_std_n);
         if (!isSyst && cur_type<0 && saveDatacardTrees_ && TMath::Abs(datacardTreeMass-l.normalizer()->GetMass(cur_type))<0.001) saveDatCardTree(l,cur_type,category, inc_cat, evweight, diphoton_index.first,diphoton_index.second,l.dipho_vtxind[diphoton_id],lead_p4,sublead_p4,true,GetSignalLabel(cur_type,l));
-
+	
         float vtx_mva  = l.vtx_std_evt_mva->at(diphoton_id);
         float vtxProb   = 1.-0.49*(vtx_mva+1.0); /// should better use this: vtxAna_.setPairID(diphoton_id); vtxAna_.vertexProbability(vtx_mva); PM
         // save trees for IC spin analysis
@@ -1193,7 +1243,7 @@ bool StatAnalysis::AnalyseEvent(LoopAll& l, Int_t jentry, float weight, TLorentz
         //save vbf trees
         if (!isSyst && cur_type<0 && saveVBFTrees_) saveVBFTree(l,category, evweight, -99.);
 
-
+	
         if (dumpAscii && !isSyst && (cur_type==0||dumpMcAscii) && mass>=massMin && mass<=massMax ) {
             // New ascii event list for syncrhonizing MVA Preselection + Diphoton MVA
 	    /*            eventListText <<"type:"<< cur_type 

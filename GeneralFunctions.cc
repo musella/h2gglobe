@@ -3244,6 +3244,8 @@ float LoopAll::DiphotonMITPreSelectionPerDipho(const char * type, int idipho, Fl
 // Define newfunction to calculate MIT (Pre-)Selection                                                      
 bool LoopAll::PhotonMITPreSelection( int photon_index, int vertex_index, float *pho_energy_array ) {
 
+	if( ignoreMVAPreselection ) { return true; }
+
     int r9_category = (int) (pho_r9[photon_index] <= 0.9);                                                      
     int photon_category = r9_category + 2*PhotonEtaCategory(photon_index,2);                                 
     int photon_cic_category = PhotonCategory(photon_index,2,2);
@@ -3801,6 +3803,10 @@ Float_t LoopAll::SumTrackPtInCone(TLorentzVector *photon_p4, Int_t vtxind, Float
 
 void LoopAll::getIetaIPhi(int phoid, int & ieta, int & iphi ) const
 {
+	ieta = pho_betacry[phoid];
+	iphi = pho_phicry[phoid];
+	return;
+	
     TLorentzVector *bcpos   = (TLorentzVector*)bc_p4->At(sc_bcseedind[pho_scind[phoid]]);
     double minDR=999.;
     int closestHit=-1;

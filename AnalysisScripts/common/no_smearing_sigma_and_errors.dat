@@ -1,0 +1,4 @@
+# category      type(0=any,1=CM,2=GAP) minEta  MaxEta   mr9    Mr9      mrun    Mrun   smear   smearErr    
+# These numbers correspond to Moriond preapproval smearings - https://hypernews.cern.ch/HyperNews/CMS/get/higgs2g/1112.html
+
+All 0 0 3 -999  999 -999999	999999	0. 0. 0.

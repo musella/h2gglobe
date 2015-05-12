@@ -437,6 +437,7 @@ LoopAll::LoopAll(TTree *tree) :
   cicVersion="7TeV";
   pho_r9_cic = &pho_r9[0];
   pho_idmva_cached = false;
+  ignoreMVAPreselection = false;
 }
 
 // ------------------------------------------------------------------------------------
