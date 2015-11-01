@@ -2546,9 +2546,18 @@ void StatAnalysis::fillOpTree(LoopAll& l, const TLorentzVector & lead_p4, const 
     l.FillTree("chiso1", (float)((*l.pho_pfiso_mycharged03)[diphoton_index.first][l.dipho_vtxind[diphoton_id]]));
     l.FillTree("chiso2", (float)((*l.pho_pfiso_mycharged03)[diphoton_index.second][l.dipho_vtxind[diphoton_id]]));
     
-
-    l.FillTree("chisow1", l.pho_pfiso_charged_badvtx_04[diphoton_index.first]);
-    l.FillTree("chisow2", l.pho_pfiso_charged_badvtx_04[diphoton_index.second]);
+    float val_tkisobad1 = -99, val_tkisobad2 = -99;
+    for(int iv=0; iv < l.vtx_std_n; iv++) {
+        if((*l.pho_pfiso_mycharged04)[diphoton_index.first][iv] > val_tkisobad1) {
+            val_tkisobad1 = (*l.pho_pfiso_mycharged04)[diphoton_index.first][iv];
+        }
+        if((*l.pho_pfiso_mycharged04)[diphoton_index.second][iv] > val_tkisobad2) {
+            val_tkisobad2 = (*l.pho_pfiso_mycharged04)[diphoton_index.second][iv];
+        }
+    }
+    
+    l.FillTree("chisow1", val_tkisobad1);
+    l.FillTree("chisow2", val_tkisobad2);
     l.FillTree("phoiso1", l.pho_pfiso_myphoton03[diphoton_index.first]);
     l.FillTree("phoiso2", l.pho_pfiso_myphoton03[diphoton_index.second]);
     l.FillTree("phoiso041", l.pho_pfiso_myphoton04[diphoton_index.first]);

@@ -4,19 +4,20 @@
 	
     "sig": null, 
 	
-    "bkg": [ ["Zmmg","Z #rightarrow #mu #mu #gamma",
-	      [["colors","myColorA1"],["SetLineWidth",2],["SetFillStyle",1],["Scale",1],["legopt","f"],["SetFillColor","myColorA3"]],
+    "bkg": [ ["Zmmg","Simulation",
+	      [["colors","myColorA1"],["SetLineWidth",2],["SetFillStyle",1001],["Scale",1],["legopt","f"],["SetFillColor","myColorA3"]],
 	      { "dymm_m90" : [] }
 	      ]
 	     ],
 
     "data": [ ["data", "data",
-	       [["SetMarkerStyle","kFullCircle"],["legopt","pl"]],
+	       [["SetMarkerStyle","kFullCircle"],["legopt","pe"]],
 	       { "Data" : [] }
 	       ]
 	      ],
 
-    "categories": [0,1,2,3], 
+    "categories": [0], 
+    "_categories": [0,1,2,3], 
     "labels": {"cat0": "all",
 	    "cat1": "eb_loweta",
 	    "cat2": "eb_higheta",
@@ -24,6 +25,12 @@
 	    },
 	
     "plots": [
+	      ["mmg_mass" ,[["Rebin",3],["ytitle","Events / %(binw)s GeV"],["xtitle","m_{#mu#mu#gamma} (GeV)"],
+			    ["xrange",[75.0,105.0]],["printIntegral",[87,93]],["printIntegral",[0,1e+5]]],null,[0.70,0.725,0.90,0.888]],
+	      ["pho_pt"   ,[["ytitle","Events / %(binw)s GeV"],["xtitle","p_{T}^{#gamma} (GeV)"],
+			    ["xrange",[10.0,60.0]],["printIntegral",[0,1e+5]]],null,[0.7,0.725,0.9,0.888]]
+	      ],
+    "_plots": [
 	      ["mmg_mass" ,[["Rebin",3],["ytitle","Events / %(binw)s GeV"],["printIntegral",[87,93]]],null,null],
 	      ["mmg_pt"   ,[["Rebin",2],["xrange",[0.0,60.0]]],null,[0.580,0.725,0.830,0.888]],
 	      ["mmg_eta"  ,[],null,null],
@@ -31,7 +38,7 @@
 	      ["nvtx"     ,[],null,null],
 	      ["pho_n"    ,[],null,null],
 	      ["pho_e"    ,[],null,null],
-	      ["pho_pt"   ,[["xrange",[0.0,60.0]]],null,[0.580,0.725,0.830,0.888]],
+	      ["pho_pt"   ,[["xrange",[20.0,60.0]]],null,[0.580,0.725,0.830,0.888]],
 	      ["pho_eta"  ,[],null,null],
 	      ["pho_phi"  ,[],null,null],
 	      ["pho_sce"  ,[],null,null],
@@ -47,14 +54,19 @@
 	      ["mumu_eta" ,[],null,null],
 	      ["mumu_phi" ,[],null,null],
 	      ["mumu_mass",[["Rebin",6],["ytitle","Events / %(binw)s GeV"]],null,null]
-	      
 	      ], 
 
     "styles": { 
 	"!mmg_mass_Zmmg_all" : [["Scale",0.929]],	
+	"!pho_pt_Zmmg_all" : [["Scale",0.929]],	
+	"!shape_mmg_mass_Zmmg_all" : [["Scale",0.961]],	
+	"!shape_pho_pt_Zmmg_all" : [["Scale",0.961]],	
 	"!mmg_mass_Zmmg_eb_loweta" : [["Scale",0.981]],
 	"!mmg_mass_Zmmg_eb_higheta" : [["Scale",0.911]],
 	"!mmg_mass_Zmmg_ee" : [["Scale",0.863]]
-	},	
+	},	 
+    "postproc" : {
+	"*" : [["addCmsLumi",[2,1,"Unpublished"]]]
+    },
     "template": "%(name)s_%(cat)s_%(sample)s"
 }

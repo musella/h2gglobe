@@ -5,10 +5,11 @@ from optparse import OptionParser, make_option
 
 from copy import copy
 from pprint import pprint
-import csv
+import csv, json
+
 
 # ------------------------------------------------------------------------------------------
-class ZmmgApp(PyRApp):
+class ZmmgApp(PlotApp):
 
     def __init__(self):
         super(ZmmgApp,self).__init__(option_list=[
@@ -28,17 +29,13 @@ class ZmmgApp(PyRApp):
                         action="append",  dest="groups",
                         default=[],
                         ),
-            make_option("-l", "--label",
+            make_option("--label",
                         action="append", dest="labels",
                         default=[],
                         ),
-            make_option("-p", "--scale-param",
+            make_option("--scale-param",
                         action="append", dest="scale_params",
                         default=[],
-                        ),
-            make_option("-i", "--infile",
-                        action="store", type="str", dest="infile",
-                        default="",
                         ),
             make_option("-w", "--ws-name",
                         action="store", dest="ws_name",
@@ -51,6 +48,10 @@ class ZmmgApp(PyRApp):
             make_option("-o", "--observable",
                         action="store", dest="observable",
                         default="CMS_hgg_mass",
+                        ),
+            make_option("--obs-bins",
+                        action="store", dest="obs_bins", type="int",
+                        default=0,
                         ),
             make_option("--obs-scale",
                         action="store", dest="obs_scale", type=float,
@@ -99,6 +100,12 @@ class ZmmgApp(PyRApp):
             make_option("--scan",action="store",dest="scan", type="string",
                         default=False
                         ),
+            make_option("--plot-simultaneous",action="store_true",dest="plot_simultaneous",
+                        default=False
+                        ),
+            make_option("--fix-shapes",action="store_true",dest="fix_shapes",
+                        default=False
+                        ),
             make_option("-j","--job-id",action="store",dest="job_id", type="int",
                         default=None
                         ),
@@ -111,6 +118,13 @@ class ZmmgApp(PyRApp):
             make_option("--last-point",action="store",dest="last_point", type="int",
                         default=None
                         ),
+            make_option("--binned",
+                        action="store_true", dest="binned", 
+                        default=False,
+                        ),
+            make_option("--unbinned",
+                        action="store_false", dest="binned", 
+                        ),
             ]
                                     )
         
@@ -122,15 +136,15 @@ class ZmmgApp(PyRApp):
         from ROOT import RooFit as RooFit
         import pyrapp.style_utils as style_utils
         
-        self.datasets_  = {}
-        self.fitCalib_  = {}
-        self.calibPdfs_ = {}
-        self.results_   = []
+        self.datasets_   = {}
+        self.fitCalib_   = {}
+        self.calibPdfs_  = {}
+        self.results_    = []
         self.nuisParams_ = []
-        self.scaleUnc_ = {}
-        self.scaleNuis_ = None
-        self.fitUnc_ = {}
-        self.catScales_ = {}
+        self.scaleUnc_   = {}
+        self.scaleNuis_  = None
+        self.fitUnc_     = {}
+        self.catScales_  = {}
         
     def getCatName(self,icat, labels=None):
         if labels:
@@ -151,7 +165,7 @@ class ZmmgApp(PyRApp):
             elif ishift < 0:
                 shift = "_shift_down%d" % -ishift
             mc[ishift] = ROOT.RooDataSet("mc_%s%s" % (name, shift), "mc_%s%s" % (name, shift), ROOT.RooArgSet(self.obs_) )
-
+            
         scaleUnc = { nuis.GetName() : 0. for nuis in self.scaleNuis_ }
         for cat in group:
             catdata = self.ws_.data("data_mass_cat%d" % cat)
@@ -196,7 +210,7 @@ class ZmmgApp(PyRApp):
             for var in [deltaEg]+extra: lst.add(var)
             mu  = ROOT.RooFormulaVar("mu_%s" % name ,param, lst)
             ## mu.Print()
-            self.ws_.rooImport(mu)
+            self.ws_.rooImport(mu,RooFit.RecycleConflictNodes())
         else:
             mu = self.ws_.factory("mu_%s[1.,0.9,1.1]" % name)
         if bindTo:
@@ -333,9 +347,9 @@ class ZmmgApp(PyRApp):
 
         lmbda.setConstant(False)
         pdf.fitTo(self.datasets_[cat]["mc"][0],RooFit.PrintLevel(-1),*fitOpts)
-
+        
         self.plotFit(name="%s_%s"% (cat,"mc"),pdf=pdf,dataset=self.datasets_[cat]["mc"][0],
-                     style=[RooFit.MarkerColor(ROOT.kBlue),RooFit.LineColor(ROOT.kBlue)])
+                     style=[RooFit.MarkerColor(ROOT.kAzure+2),RooFit.LineColor(ROOT.kAzure+2)])
         
         gr = ROOT.TGraphErrors()
         self.fitCalib_[cat] = gr
@@ -398,6 +412,15 @@ class ZmmgApp(PyRApp):
                                                      )
         self.log(" Fit scale dependence for category %s " % cat)
         self.ws_.function("mu_%s_calib_data" % cat).Print("V")
+
+    def fixShapes(self,deps):
+        itr = deps.createIterator()
+        var = itr.Next()
+        while var:
+            name = var.GetName()
+            if "lmbda" in name or "sigma" in name or "width" in name:
+                var.setConstant(True)
+            var = itr.Next()
         
     def runFits(self,cat,plot=True,plotNll=False,doStatOnly=True,doScaleFreeze=True):
 
@@ -504,10 +527,10 @@ class ZmmgApp(PyRApp):
             if plotNll:
                 pll = nll.createProfile(ROOT.RooArgSet(deltaEgData))
                 curve = self.plotNll(name="scale_%s_nll" % cat, var=deltaEgData, logl=pll )
-            
+        
         
 
-    def runSimultaneousFit(self,cats,saveTo,plotNll,globalDeltaNll):
+    def runSimultaneousFit(self,cats,saveTo,plotNll,globalDeltaNll,binned):
 
         simul = ROOT.RooSimultaneous("model_allcats", "model_allcats", self.cat_)
 
@@ -519,7 +542,7 @@ class ZmmgApp(PyRApp):
             nuis.setVal(0.)
 
         ## dataImport = ROOT.RooArgList()
-        dataScales = []
+        dataScales = set()
         index = RooFit.Index(self.cat_)
         obs = ROOT.RooArgSet(self.obs_)
         combData = None
@@ -534,8 +557,16 @@ class ZmmgApp(PyRApp):
             deltaEgMc    = paramsMc["deltaEg_%s_%s" % (cat,"calib_mc") ]
             ##dataScales.append(deltaEgData)
             deltaEgData = self.catScales_["%s_%s" % (cat,"calib_data")] 
-            dataScales.append( deltaEgData )
-            
+            if deltaEgData.IsA().InheritsFrom("RooRealVar"):
+                dataScales.add( deltaEgData )
+            else:
+                deps = deltaEgData.getDependents(self.ws_.allVars())
+                itr = deps.createIterator()
+                var = itr.Next()
+                while var:
+                    dataScales.add( var )
+                    var = itr.Next()
+                    
             simul.addPdf(pdfs["data"],"%s_data" % cat)
             simul.addPdf(pdfs["mc"],"%s_mc" % cat)
 
@@ -550,7 +581,10 @@ class ZmmgApp(PyRApp):
             ## pdfs["data"].getDependents(self.ws_.allVars()).Print("V")
             
             self.log(" MC   scale: %1.3g %1.3g %1.3g" % (deltaEgMc.getVal(),deltaEgMc.getErrorHi(),deltaEgMc.getErrorLo()) )
-            self.log(" Data scale: %1.3g %1.3g %1.3g" % (deltaEgData.getVal(),deltaEgData.getErrorHi(),deltaEgData.getErrorLo()) )
+            if deltaEgData.IsA().InheritsFrom("RooRealVar"):
+                self.log(" Data scale: %1.3g %1.3g %1.3g" % (deltaEgData.getVal(),deltaEgData.getErrorHi(),deltaEgData.getErrorLo()) )
+            else:
+                self.log(" Data scale: %1.3g" % (deltaEgData.getVal()) )
             
             if not combData:
                 combData = ROOT.RooDataSet("comb_set_allcats","comb_set_allcats", obs,
@@ -568,21 +602,47 @@ class ZmmgApp(PyRApp):
 
                 
 
+        ## if fix_shapes:
+        ##     self.fixShapes(simul.getDependents(self.ws_.allVars()))
+
         ## combData.Print("V")
         self.log("Starting global fit ...")
-        simul.getDependents(self.ws_.allVars()).Print("V")
+        deps = simul.getDependents(self.ws_.allVars())
+        deps.Print("V")
+        if binned:
+            self.keep(combData)
+            combData = combData.binnedClone("comb_set_allcats_binned","comb_set_allcats_binned")
         if constraints.getSize() > 0:
             nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False), RooFit.ExternalConstraints(constraints))
         else:
             nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False))
+        
+        mcScales = []
+        itr = deps.createIterator()
+        var = itr.Next()
+        while var:
+            if "_mc" in var.GetName():
+                var.setConstant(True)
+                var.Print()
+                mcScales.append(var)
+            var = itr.Next()
+
         minim = ROOT.RooMinimizer(nll)
         minim.setPrintLevel(-1)
         minim.setStrategy(2)
-
-        minim.migrad()
-        ## dataScalesSet = ROOT.RooArgSet()
-        ## for d in dataScales:
-        ##     dataScalesSet.add(d)
+        print minim.migrad()
+        
+        for var in mcScales:
+            var.setConstant(False)
+            
+        minim = ROOT.RooMinimizer(nll)
+        minim.setPrintLevel(-1)
+        minim.setStrategy(2)
+        print minim.migrad()
+        
+        dataScalesSet = ROOT.RooArgSet()
+        for d in dataScales:
+            dataScalesSet.add(d)
         ## minim.minos(dataScalesSet)
 
         self.keep( [simul,combData] )
@@ -594,13 +654,14 @@ class ZmmgApp(PyRApp):
             getattr(self.ows_,"import")(combData)
             ## getattr(self.ows_,"import")(nll)
             self.ows_.defineSet("constraints",constraints,True)
-            self.ows_.saveSnapshot("deltaEgFit",self.ows_.allVars(),True)
+            self.ows_.defineSet("dataScales",dataScalesSet,True)
+            ### self.ows_.saveSnapshot("deltaEgFit",self.ows_.allVars(),True)
+            self.ows_.saveSnapshot("deltaEgFit",simul.getDependents(self.ows_.allVars()),True)
             
         self.log("Global fit result")
         simul.getDependents(self.ws_.allVars()).Print("V")
         nllMin = nll.getVal()
-
-
+                
         for cat in cats:
             pdfs = self.calibPdfs_[cat]
             datasets = self.datasets_[cat]
@@ -632,7 +693,6 @@ class ZmmgApp(PyRApp):
                 dnll0 = curve.Eval(0.)
                 
                 self.results_.append( (cat, deltaEgData.getVal(), deltaEgData.getErrorLo(), deltaEgData.getErrorHi(), 2.*dnll0 ) )
-                ## self.results_.append( (cat, deltaEgData.getVal(), deltaEgData.getErrorLo(), deltaEgData.getErrorHi(), 1000. ) )
 
         if globalDeltaNll:
             self.log("Computing NLL at 0 ...")
@@ -666,15 +726,219 @@ class ZmmgApp(PyRApp):
             
 
     def __call__(self,options,args):
+        
+        self.loadRootStyle()
+
         if not options.verbose:
             ROOT.RooMsgService.instance().setGlobalKillBelow(RooFit.WARNING)
         
-        if options.scan:
+        if options.plot_simultaneous:
+            self.plot(options,args)
+        elif options.scan:
             print options.scan
             self.scan(options,args)
         else:
             self.fit(options,args)
+    
+
+    def plot(self,options,args):
+        fin = self.open(options.infile)
+        fin.ls()
+        self.ws_ = fin.Get("zmmgFit")
+        self.obs_ = self.ws_.var(options.observable)
+        self.cat_ = self.ws_.cat("zmmgCategory")
+        
+        simul = self.ws_.pdf("model_allcats")
+        if options.binned:
+            combData = self.ws_.data("comb_set_allcats_binned")
+        else:
+            combData = self.ws_.data("comb_set_allcats")
             
+        self.ws_.loadSnapshot("deltaEgFit")
+        
+        if len(options.groups) > 0:
+            categories = [ [int(t) for t in g.split(",")] for g in options.groups ]
+        else:
+            categories = [ [i] for i in range(options.ncat) ]
+        
+        dataCut   = []
+        mcCut     = []
+        dataSlice = []
+        mcSlice   = []
+        dataPdfs  = ROOT.RooArgList()
+        mcPdfs    = ROOT.RooArgList()
+        dataNorms = ROOT.RooArgList()
+        mcNorms   = ROOT.RooArgList()
+        for igroup,group in enumerate(categories):
+            catName = self.getCatName(igroup,options.labels)
+            dataCut.append( "zmmgCategory == zmmgCategory::%s_data" % catName  ) 
+            mcCut.append( "zmmgCategory == zmmgCategory::%s_mc" % catName  ) 
+
+            dataSlice.append( "%s_data" % catName  ) 
+            mcSlice.append( "%s_mc" % catName  ) 
+        
+            dataPdf = simul.getPdf("%s_data" % catName)
+            mcPdf = simul.getPdf("%s_mc" % catName)
+            
+            dataDeps = dataPdf.getDependents( self.ws_.allVars() )
+            itr = dataDeps.createIterator()
+            var = itr.Next()
+            while var:
+                name = var.GetName()
+                if name != self.obs_.GetName():
+                    var.setConstant(True)
+                var = itr.Next()
+            
+            mcDeps = mcPdf.getDependents( self.ws_.allVars() )
+            itr = mcDeps.createIterator()
+            var = itr.Next()
+            while var:
+                name = var.GetName()
+                if name != self.obs_.GetName():
+                    var.setConstant(True)
+                var = itr.Next()
+            
+            dataProj = combData.reduce(dataCut[-1])
+            dataNorm = self.ws_.factory("%s_dataPdf_norm[%f]" %(catName, dataProj.sumEntries()))
+            dataNorm.setConstant(False)
+            dataNorm.Print()
+            dataExtPdf = ROOT.RooExtendPdf("%s_ext" % dataPdf.GetName(),"%s_ext" % dataPdf.GetName(), dataPdf, dataNorm)
+            dataExtPdf.fitTo(dataProj)
+            getattr(self.ws_,"import")(dataExtPdf)
+            ### dataPdfs.add(dataExtPdf)
+            ### dataNorms.add(RooFit.RooConst(1.))
+            dataPdfs.add(dataPdf)
+            dataNorms.add(dataNorm)
+            dataNorm.Print()
+            
+            self.keep( [dataNorm, dataExtPdf] )
+
+            mcProj = combData.reduce(mcCut[-1])
+            mcNorm = self.ws_.factory("%s_mcPdf_norm[%f]" % (catName,mcProj.sumEntries()))
+            mcNorm.setConstant(False)
+            mcExtPdf = ROOT.RooExtendPdf("%s_ext" % mcPdf.GetName(),"%s_ext" % mcPdf.GetName(), mcPdf, mcNorm)
+            mcExtPdf.fitTo(mcProj)
+            ## mcPdfs.add(mcExtPdf)
+            ## mcNorms.add(RooFit.RooConst(1.))
+            getattr(self.ws_,"import")(mcExtPdf)
+            mcPdfs.add(mcPdf)
+            mcNorms.add(mcNorm)
+            mcNorms.Print()
+
+            self.keep( [mcNorm, mcExtPdf] )
+            
+        dataPdf = ROOT.RooAddPdf("data_pdf","data_pdf",dataPdfs,mcNorms)
+        mcPdf = ROOT.RooAddPdf("mc_pdf","mc_pdf",mcPdfs,mcNorms)
+        
+        self.keep( [dataPdf, mcPdf] )
+
+        dataCut = "||".join( dataCut )
+        mcCut   = "||".join( mcCut )
+
+        dataSlice = ",".join( dataSlice )
+        mcSlice   = ",".join( mcSlice )
+        
+        print dataCut, dataSlice
+        print mcCut, mcSlice
+        
+        printLevel = ROOT.RooMsgService.instance().globalKillBelow()
+        ROOT.RooMsgService.instance().setGlobalKillBelow(RooFit.FATAL)
+        legStyle  = [["SetTextFont",67],["SetTextSize",17],["SetFillStyle",0],["SetTextAlign",12]]
+                
+        style=[RooFit.MarkerColor(ROOT.kBlack),RooFit.LineColor(ROOT.kBlack),RooFit.Precision(1.e-9),RooFit.LineWidth(3),RooFit.MarkerSize(1.4)]
+        
+        ## xaxisStyle = [("SetTitle","s_{E^{#gamma}}"),("UseCurrentStyle"),("SetRangeUser",(0.5,1.5))]
+        xaxisStyle = [("SetTitle","s_{E_{#gamma}} = (m_{#mu#mu#gamma}^{2} - m_{#mu#mu}^{2}) / (m_{Z}^{2} - m_{#mu#mu}^{2})"),("UseCurrentStyle"),("SetRangeUser",(0.5,1.5))]
+        yaxisStyle = [("SetTitle","Events / %1.2g" % ( (self.obs_.getMax()-self.obs_.getMin())/50.) ),("UseCurrentStyle"),("SetRangeUser",(0.,5000.))]
+        
+        frame = self.obs_.frame(RooFit.Bins(50))
+        
+        dataProj = combData.reduce(RooFit.Cut(dataCut))
+        dataProj.plotOn(frame,*style)
+        dataPdf.plotOn(frame,*style)
+        dataFit  = frame.getObject(int(frame.numItems()-2))
+                
+        ROOT.RooMsgService.instance().setGlobalKillBelow(RooFit.FATAL)
+        
+        style=[RooFit.MarkerColor(ROOT.kAzure+2),RooFit.LineColor(ROOT.kAzure+2),RooFit.Precision(1.e-9),RooFit.LineWidth(3),RooFit.LineStyle(7),RooFit.MarkerSize(1.4),RooFit.MarkerStyle(ROOT.kOpenTriangleUp)]
+        
+        mcProj = combData.reduce(RooFit.Cut(mcCut))
+        scl = 0.995
+        scl = 2.65e+04/ dataProj.sumEntries()
+        ## print scl
+        mcProj.plotOn(frame,*style+[RooFit.Rescale(scl*dataProj.sumEntries() / mcProj.sumEntries())])
+        mcPdf.plotOn(frame,*style+[RooFit.Normalization(scl*dataProj.sumEntries() / mcProj.sumEntries())])
+        mcFit  = frame.getObject(int(frame.numItems()-2))
+        
+        canv = ROOT.TCanvas("combfit_plot")
+        canv.cd()
+        frame.Draw()
+
+        legend = ROOT.TLegend(0.65,0.55,0.9,0.95)
+        legend.AddEntry(None,"Z#rightarrow#mu#mu#gamma","")
+        legend.AddEntry(dataFit,"Data","pe")
+        legend.AddEntry(mcFit,"Simulation","pe")
+
+        style_utils.apply(legend,legStyle)
+        style_utils.apply(frame.GetXaxis(),xaxisStyle)
+        style_utils.apply(frame.GetYaxis(),yaxisStyle)
+        legend.Draw("same")
+
+        canv.Modified()
+        canv.Update()
+        style_utils.addCmsLumi(canv,2,1,"Unpublished")
+
+        self.keep( [canv,frame,legend,dataFit,mcFit] )
+        
+        ### dataHist = frameData.getObject(int(frameData.numItems()-2)).Clone()
+        ### dataFit  = frameData.getObject(int(frameData.numItems()-1)).Clone()
+        ### 
+        ### mcHist = frameMc.getObject(int(frameMc.numItems()-2)).Clone()
+        ### mcFit  = frameMc.getObject(int(frameMc.numItems()-1)).Clone()
+        ### 
+        ### frameBoth = frameData.emptyClone("combfit_plot")
+        ### 
+        ### canvBoth = ROOT.TCanvas("combfit_plot")
+        ### canvBoth.cd()
+        ### 
+        ### for ob in dataHist,dataFit,mcHist,mcFit:
+        ###     frameBoth.addObject(ob)
+        ### frameBoth.Draw()
+        ### 
+        ### self.keep( [dataHist,dataFit,mcHist,mcFit,frameBoth,canvBoth] )
+        
+        #### frameResid = self.obs_.frame()
+        #### hist = frame.getObject(int(frame.numItems()-2))
+        #### fit  = frame.getObject(int(frame.numItems()-1))
+        #### resid = frame.residHist(hist.GetName(),fit.GetName(),True)
+        #### resid.SetMarkerColor(hist.GetMarkerColor())
+        #### resid.SetLineColor(hist.GetLineColor())
+        #### frameResid.addPlotable(resid,"PE")
+        #### 
+        #### canv = ROOT.TCanvas("fit_%s" % name )
+        #### canv.Divide(1,2)
+        #### canv.cd(1)
+        #### ROOT.gPad.SetPad(0.,0.2,1.,1.)
+        #### canv.cd(2)
+        #### ROOT.gPad.SetPad(0.,0.,1.,0.2)
+        #### 
+        #### canv.cd(1)
+        #### frame.GetYaxis().SetLabelSize( frame.GetYaxis().GetLabelSize() * canv.GetWh() / ROOT.gPad.GetWh() )
+        #### frame.Draw()
+        #### canv.cd(2)
+        #### ROOT.gPad.SetGridy()
+        #### frameResid.Draw()
+        #### frameResid.GetYaxis().SetLabelSize( frameResid.GetYaxis().GetLabelSize() * 3.5 )
+        #### frameResid.GetYaxis().SetTitle("pull")
+        #### 
+        #### self.keep( [canv,frame,frameResid] )
+
+        self.autosave(True)
+
+        ROOT.RooMsgService.instance().setGlobalKillBelow(printLevel)
+        
+
+        
     def scan(self,options,args):
         fin = self.open(options.infile)
         self.ws_ = fin.Get("zmmgFit")
@@ -695,9 +959,18 @@ class ZmmgApp(PyRApp):
         self.var_.Print()
 
         simul = self.ws_.pdf("model_allcats")
-        combData = self.ws_.data("comb_set_allcats")
+        if options.binned:
+            combData = self.ws_.data("comb_set_allcats_binned")
+        else:
+            combData = self.ws_.data("comb_set_allcats")
         constraints = self.ws_.set("constraints")
         
+        ## if fix_shapes:
+        ##     self.fixShapes(simul.getDependents(self.ws_.allVars()))
+            
+        combData.Print()
+        constraints.Print()
+
         if constraints.getSize() > 0:
             nll = simul.createNLL(combData, RooFit.NumCPU(8), RooFit.Extended(False), RooFit.ExternalConstraints(constraints))
         else:
@@ -713,18 +986,21 @@ class ZmmgApp(PyRApp):
         minim = ROOT.RooMinimizer(nll)
         minim.setPrintLevel(-1)
         minim.setStrategy(2)
+        minim.optimizeConst(True)
         st = minim.migrad()
+
+        nll0 = nll.getVal()
+        self.var_.Print()
         
-        nll.enableOffsetting(True)
         self.var_.setConstant(True)
         minim = ROOT.RooMinimizer(nll)
         minim.setPrintLevel(-1)
         minim.setStrategy(2)
+        minim.optimizeConst(True)
         ## st = minim.migrad()
         ## st = 200
         
         self.var_.Print()
-        nll0 = nll.getVal()
         pll = nll ## .createProfile(ROOT.RooArgSet(self.var_))
         ## print pll.minimizer().fitter().Result().Status() 
         values[self.var_.getVal()] = ( pll.getVal(),st )
@@ -748,7 +1024,7 @@ class ZmmgApp(PyRApp):
         outname = "scan_%s" % self.var_.GetName()
         if self.options.job_id != None:
             outname += "_%d" % self.options.job_id
-        outfile = open("%s/%s.json" % (self.options.outdir,outname))
+        outfile = open("%s/%s.json" % (self.options.outdir,outname), "w+")
         outfile.write( json.dumps( values,indent=4,sort_keys=True) )
         outfile.close()
         
@@ -759,6 +1035,8 @@ class ZmmgApp(PyRApp):
         self.ws_ = fin.Get(options.ws_name)
         self.ws_.rooImport = lambda *args : getattr(self.ws_,"import")(*args) 
         self.obs_ = self.ws_.var(options.observable)
+        if options.obs_bins > 0:
+            self.obs_.setBins(options.obs_bins)
         self.scaleObs_ = options.obs_scale
         obs = ROOT.RooArgList(self.obs_)
         self.trObs_ = ROOT.RooFormulaVar("zmmgObs","@0/%1.4g" % self.scaleObs_,obs)
@@ -768,8 +1046,6 @@ class ZmmgApp(PyRApp):
         self.ws_.rooImport(self.cat_)
 
         if options.scale_unc:
-            ## reader = csv.DictReader(open(options.scale_unc))
-            ## for row in reader:
             for row in options.scale_unc:
                 srow = {}
                 for field,val in row.iteritems():
@@ -783,13 +1059,10 @@ class ZmmgApp(PyRApp):
                     for n in srow.keys():
                         if n!="cat" and n!="tot":
                             self.scaleNuis_.append( self.addNuis(n) )
-                    ## self.scaleNuis_ = [ n for n in srow.keys() if n!="cat" and n!="tot" ]
         else:
             self.scaleNuis_ = []
 
         if options.fit_unc:
-            ## reader = csv.DictReader(open(options.fit_unc))
-            ## for row in reader:
             for row in options.fit_unc:
                 srow = {}
                 for field,val in row.iteritems():
@@ -820,7 +1093,19 @@ class ZmmgApp(PyRApp):
                     catScale = options.scale_params[0]
                 else:
                     catScale = options.scale_params[igroup]
-                scaleParam = self.ws_.factory("%s[0.,-1.e-1,1.e-1]"%catScale)
+                if "=" in catScale:
+                    name,df = [ a.rstrip(" ").lstrip(" ") for a in catScale.split("=") ]
+                    formula,deps = [ a.rstrip(" ").lstrip(" ") for a in df.split(";") ]
+                    rooDeps = ROOT.RooArgList()
+                    for dep in deps.split(","):
+                        var = self.ws_.factory("%s[0.,-1.e-1,1.e-1]"%dep.rstrip(" ").lstrip(" "))
+                        rooDeps.add(var)
+                    scaleParam = ROOT.RooFormulaVar(name,formula,rooDeps)
+                    self.log("Scale parameter for category %s" % catName)
+                    scaleParam.Print()
+                    self.ws_.rooImport(scaleParam)
+                else:
+                    scaleParam = self.ws_.factory("%s[0.,-1.e-1,1.e-1]"%catScale)
                 self.catScales_["%s_calib_data"%catName] = scaleParam
                 ## print self.catScales_
                 
@@ -832,7 +1117,7 @@ class ZmmgApp(PyRApp):
             allcats.append(catName)
 
         if options.global_fit:
-            self.runSimultaneousFit(allcats,options.write_ws,options.plot_nll,options.global_deltanll)
+            self.runSimultaneousFit(allcats,options.write_ws,options.plot_nll,options.global_deltanll,options.binned)
         
         ## pprint( self.results_ )
         out = open("%s/results.txt" % options.outdir,"w+")
@@ -858,3 +1143,5 @@ if __name__ == "__main__":
     app = ZmmgApp()
     app.run()
     
+
+#  LocalWords:  TCanvas

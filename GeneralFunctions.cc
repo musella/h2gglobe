@@ -3229,9 +3229,13 @@ float LoopAll::DiphotonMITPreSelectionPerDipho(const char * type, int idipho, Fl
 // Define newfunction to calculate MIT (Pre-)Selection                                                      
 bool LoopAll::PhotonMITPreSelection( int photon_index, int vertex_index, float *pho_energy_array ) {
 
+
+    if(skipPreselection) { return true; }
+
     int r9_category = (int) (pho_r9[photon_index] <= 0.9);                                                      
     int photon_category = r9_category + 2*PhotonEtaCategory(photon_index,2);                                 
     int photon_cic_category = PhotonCategory(photon_index,2,2);
+    
    
     float mitCuts_hoe[4]                 = {0.082,0.075,0.075,0.075};                                        
     float mitCuts_sieie[4]               = {0.014,0.014,0.034,0.034};                                        

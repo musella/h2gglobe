@@ -26,8 +26,8 @@ diMuMassMin=35.
 # photon selection
 applyPhoPresel=0
 applyPhoID=1
-idMVACuts=-2,0.,-2,0.
-isoCuts=9999.,5.,9999.,5.
+idMVACuts=-1.,0.,-1.,0.
+isoCuts=0.,5.,0.,5.
 
 
 # FSR selection

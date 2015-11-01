@@ -175,7 +175,7 @@ vector<double> getFWHM(RooRealVar *mass, RooAbsPdf *pdf, RooDataSet *data, doubl
   double low = h->GetBinCenter(h->FindFirstBinAbove(hm));
   double high = h->GetBinCenter(h->FindLastBinAbove(hm));
 
-  cout << "FWHM: [" << low << "-" << high << "] Max = " << hm << endl;
+  cout << "FWHM: [" << low << "-" << high << "] Max = " << hm << " fracEv = " << h->Integral(h->FindFirstBinAbove(hm),h->FindLastBinAbove(hm)) << " " << h->Integral() << endl;
   vector<double> result;
   result.push_back(low);
   result.push_back(high);
@@ -367,40 +367,70 @@ void printInfo(map<string,RooDataSet*> data, map<string,RooAddPdf*> pdfs){
   for (map<string,RooDataSet*>::iterator dat=data.begin(); dat!=data.end(); dat++){
     if (!dat->second) {
       cout << "Dataset for " << dat->first << " not found" << endl;
-      exit(1);
+      // exit(1);
+    } else { 
+	    cout << dat->first << " : ";
+	    dat->second->Print();
     }
-    cout << dat->first << " : ";
-    dat->second->Print();
   }
   for (map<string,RooAddPdf*>::iterator pdf=pdfs.begin(); pdf!=pdfs.end(); pdf++){
     if (!pdf->second) {
       cout << "Pdf for " << pdf->first << " not found" << endl;
-      exit(1);
+      // exit(1);
+    } else { 
+	    cout << pdf->first << " : ";
+	    pdf->second->Print();
     }
-    cout << pdf->first << " : ";
-    pdf->second->Print();
   }
-
 }
 
-map<string,RooDataSet*> getGlobeData(RooWorkspace *work, int ncats, int m_hyp){
+map<string,RooDataSet*> getGlobeData(RooWorkspace *work, int ncats, int m_hyp, int fold=0){
   
   map<string,RooDataSet*> result;
   for (int cat=0; cat<ncats; cat++){
-    result.insert(pair<string,RooDataSet*>(Form("cat%d",cat),(RooDataSet*)work->data(Form("sig_mass_m%3d_cat%d",m_hyp,cat))));
+    result.insert(pair<string,RooDataSet*>(Form("cat%d",cat),(RooDataSet*)work->data(Form("sig_sm_mass_m%3d_cat%d",m_hyp,cat))));
   }
-  result.insert(pair<string,RooDataSet*>("all",(RooDataSet*)work->data(Form("sig_mass_m%3d_AllCats",m_hyp))));
+  
+  
+  if( fold != 0 ) {
+	  int nfolded = ncats / fold;
+	  for(int ifold=0; ifold<nfolded; ++ifold) {
+		  int icat = ncats + ifold;
+		  RooDataSet * folded = (RooDataSet*)result[Form("cat%d",ifold*fold)]->Clone(Form("folded_%d",icat));
+		  for(int jfold=1; jfold<fold; ++jfold) {
+			  folded->append(*(result[Form("cat%d",jfold+ifold*fold)]));
+		  }
+		  result.insert(pair<string,RooDataSet*>(Form("cat%d",icat),folded));
+	  }
+  }
+  
+  result.insert(pair<string,RooDataSet*>("all",(RooDataSet*)work->data(Form("sig_sm_mass_m%3d_AllCats",m_hyp))));
 
   return result;
 }
 
-map<string,RooAddPdf*> getGlobePdfs(RooWorkspace *work, int ncats){
+map<string,RooAddPdf*> getGlobePdfs(RooWorkspace *work, int ncats, int fold=0){
 
   map<string,RooAddPdf*> result;
   for (int cat=0; cat<ncats; cat++){
-    result.insert(pair<string,RooAddPdf*>(Form("cat%d",cat),(RooAddPdf*)work->pdf(Form("sigpdfrelcat%d_allProcs",cat))));
+    result.insert(pair<string,RooAddPdf*>(Form("cat%d",cat),(RooAddPdf*)work->pdf(Form("sigpdfrel_sm_cat%d_allProcs",cat))));
   }
-  result.insert(pair<string,RooAddPdf*>("all",(RooAddPdf*)work->pdf("sigpdfrelAllCats_allProcs")));
+  
+  if( fold != 0 ) {
+	  int nfolded = ncats / fold;
+	  cout << "nfolded " << nfolded << endl;
+	  for(int ifold=0; ifold<nfolded; ++ifold) {
+		  RooArgList lst;
+		  for(int jfold=0; jfold<fold; ++jfold) {
+			  lst.add(*(result[Form("cat%d",jfold+ifold*fold)]));
+		  }
+		  lst.Print();
+		  int icat = ncats + ifold;
+		  result.insert(pair<string,RooAddPdf*>(Form("cat%d",icat),new RooAddPdf(Form("folded_%d",icat),Form("folded_%d",icat),lst)));
+	  }
+  }
+
+  result.insert(pair<string,RooAddPdf*>("all",(RooAddPdf*)work->pdf("sigpdfrel_sm_AllCats_allProcs")));
 
   return result;
 }
@@ -602,7 +632,7 @@ double guessNew(RooRealVar *mgg, RooMultiPdf *mpdf, RooCategory *mcat, RooAbsDat
 	return guess;
 }
 
-pair<double,double> bkgEvPerGeV(RooWorkspace *work, int m_hyp, int cat, pair<double,double> &bkgTotal, bool is2011){
+pair<double,double> bkgEvPerGeV(RooWorkspace *work, int m_hyp, int cat, pair<double,double> &bkgTotal, bool is2011, pair<double,double> rng=pair<double,double>(-1.,-1.)){
   
 	if (work->GetName()==TString("cms_hgg_workspace")) {
 		RooRealVar *mass = (RooRealVar*)work->var("CMS_hgg_mass");
@@ -614,16 +644,22 @@ pair<double,double> bkgEvPerGeV(RooWorkspace *work, int m_hyp, int cat, pair<dou
 		RooPlot *tempFrame = mass->frame();
 		data->plotOn(tempFrame,Binning(80));
 		pdf->plotOn(tempFrame);
+
+		if( rng.first < 0. ) { rng.first = double(m_hyp)-0.5; }
+		if( rng.second < 0. ) { rng.second = double(m_hyp)+0.5; }
+		
 		RooCurve *curve = (RooCurve*)tempFrame->getObject(tempFrame->numItems()-1);
-		double nombkg = curve->Eval(double(m_hyp));
-	 
+		// double nombkg = curve->Eval(double(m_hyp));
+		double nombkg = curve->average(rng.first,rng.second);
+		cout << "average bkg " << cat << " " << rng.first << " " << rng.second << " " << nombkg << endl;
+
 		RooRealVar *nlim = new RooRealVar(Form("nlim%d",cat),"",0.,0.,1.e5);
 		//double lowedge = tempFrame->GetXaxis()->GetBinLowEdge(FindBin(double(m_hyp)));
 		//double upedge  = tempFrame->GetXaxis()->GetBinUpEdge(FindBin(double(m_hyp)));
 		//double center  = tempFrame->GetXaxis()->GetBinUpCenter(FindBin(double(m_hyp)));
 
 		nlim->setVal(nombkg);
-		mass->setRange("errRange",m_hyp-0.5,m_hyp+0.5);
+		mass->setRange("errRange",rng.first,rng.second);
 		RooAbsPdf *epdf = 0;
 		epdf = new RooExtendPdf("epdf","",*pdf,*nlim,"errRange");
 			
@@ -634,7 +670,7 @@ pair<double,double> bkgEvPerGeV(RooWorkspace *work, int m_hyp, int cat, pair<dou
 		minim.migrad();
 		minim.minos(*nlim);
 		
-		double error = (nlim->getErrorLo(),nlim->getErrorHi())/2.;
+		double error = (nlim->getErrorLo(),nlim->getErrorHi())/2./(rng.second-rng.first);
 		data->Print();
 		bkgTotal.first += nombkg;
 		bkgTotal.second += error*error;
@@ -905,13 +941,15 @@ vector<double> sigEvents(RooWorkspace *work, int m_hyp, int cat, string binnedSi
   return result;
 }
 
-pair<double,double> datEvents(RooWorkspace *work, int m_hyp, int cat, pair<double,double> &runningTotal){
+pair<double,double> datEvents(RooWorkspace *work, int m_hyp, int cat, pair<double,double> &runningTotal, pair<double,double> rng=pair<double,double>(-1.,-1.)){
   
   vector<double> result;
   RooDataSet *data = (RooDataSet*)work->data(Form("roohist_data_mass_cat%d",cat));
   double evs = data->sumEntries();
   double evsPerGev;
-  evsPerGev = data->sumEntries(Form("CMS_hgg_mass>=%4.1f && CMS_hgg_mass<%4.1f",double(m_hyp)-0.5,double(m_hyp)+0.5));
+  if( rng.first < 0. ) { rng.first = double(m_hyp)-0.5; }
+  if( rng.second < 0. ) { rng.second = double(m_hyp)+0.5; }
+  evsPerGev = data->sumEntries(Form("CMS_hgg_mass>=%4.1f && CMS_hgg_mass<%4.1f",rng.first,rng.second)) / (rng.second-rng.first);
   runningTotal.first += evs;
   runningTotal.second += evsPerGev;
   return pair<double,double>(evs,evsPerGev);
@@ -955,7 +993,7 @@ void makeSignalCompositionPlot(int nCats, map<string,string> labels, map<string,
 			if (c > nCats-1-raiseVHdijet && c < nCats) cat = c-1;
       cout << catName[cat] << ": " <<  100.*sigVals[Form("cat%d",cat)][i+1]/sigVals[Form("cat%d",cat)][0] << "%" << std::endl;
     }
-    cout << catName[nCats] << ": " <<  100.*sigVals["all"][i+1]/sigVals["all"][0] << "%" << std::endl;
+    /// cout << catName[nCats] << ": " <<  100.*sigVals["all"][i+1]/sigVals["all"][0] << "%" << std::endl;
   }
 
   gStyle->SetPadTickX(1);  // To get tick marks on the opposite side of the frame
@@ -997,7 +1035,7 @@ void makeSignalCompositionPlot(int nCats, map<string,string> labels, map<string,
   ci = TColor::GetColor("#00ff00");
   dummy->SetFillColor(ci);
 
-  for (int c=0;c<nCats+1;++c) {
+  for (int c=0;c<nCats;++c) {
 		int cat = c;
 		if (c == nCats-1-raiseVHdijet) cat = nCats-1;
 		if (c > nCats-1-raiseVHdijet && c < nCats) cat = c-1;
@@ -1030,7 +1068,7 @@ void makeSignalCompositionPlot(int nCats, map<string,string> labels, map<string,
 
   TPave *pave;
 	TPaveText *pavetext;
-  for (int c=0; c<nCats+1; c++) {
+  for (int c=0; c<nCats; c++) {
 		int cat = c;
 		if (c == nCats-1-raiseVHdijet) cat = nCats-1;
 		if (c > nCats-1-raiseVHdijet && c < nCats) cat = c-1;
@@ -1184,7 +1222,7 @@ void makeSignalCompositionPlot(int nCats, map<string,string> labels, map<string,
   
   TPave *spave;
   TPave *fpave;
-  for (int c=0; c<nCats+1; c++) {
+  for (int c=0; c<nCats; c++) {
 		int cat = c;
 		if (c == nCats-1-raiseVHdijet) cat = nCats-1;
 		if (c > nCats-1-raiseVHdijet && c < nCats) cat = c-1;
@@ -1308,7 +1346,7 @@ void makeSignalCompositionPlot(int nCats, map<string,string> labels, map<string,
     dummy3->Draw("");
     
     TPave *sobpave;
-    for (int c=0; c<nCats+1; c++) {
+    for (int c=0; c<nCats; c++) {
 			int cat = c;
 			if (c == nCats-1-raiseVHdijet) cat = nCats-1;
 			if (c > nCats-1-raiseVHdijet && c < nCats) cat = c-1;
@@ -1396,9 +1434,9 @@ void getConfigFromFile(TFile *inFile, bool &is2011, bool &splitVH, bool &isMassF
 
 void getNCats(RooWorkspace *ws, int mh, int &ncats){
   ncats=0;
-  RooDataSet *data = (RooDataSet*)ws->data(Form("sig_mass_m%d_cat0",mh));
+  RooDataSet *data = (RooDataSet*)ws->data(Form("sig_sm_mass_m%d_cat0",mh));
   while (1) {
-    data = (RooDataSet*)ws->data(Form("sig_mass_m%d_cat%d",mh,ncats));
+    data = (RooDataSet*)ws->data(Form("sig_sm_mass_m%d_cat%d",mh,ncats));
     if (!data) break;
     else ncats++;
   }
@@ -1432,6 +1470,7 @@ void makeParametricSignalModelPlots(string sigFitFileName, string outPathName, i
   }
 
   getNCats(hggWS,m_hyp,ncats);
+  int fold=0;
 
   cout << "Configured options from file:" << endl;
   cout << "\t is2011: " << is2011 << endl;
@@ -1559,7 +1598,12 @@ void makeParametricSignalModelPlots(string sigFitFileName, string outPathName, i
     labels.insert(pair<string,string>("cat17","#splitline{|#eta|_{max} > 1.44, R_{9min} < 0.94}{0.375 < |cos(#theta*)| < 0.55}"));
     labels.insert(pair<string,string>("cat18","#splitline{|#eta|_{max} > 1.44, R_{9min} < 0.94}{0.55 < |cos(#theta*)| < 0.75}"));
     labels.insert(pair<string,string>("cat19","#splitline{|#eta|_{max} > 1.44, R_{9min} < 0.94}{0.75 < |cos(#theta*)| < 0.1}"));
-    labels.insert(pair<string,string>("all","All Categories Combined"));
+    fold = 5;
+    labels.insert(pair<string,string>("cat20","#splitline{|#eta|_{max} < 1.44, R_{9min} > 0.94}"));
+    labels.insert(pair<string,string>("cat21","#splitline{|#eta|_{max} < 1.44, R_{9min} < 0.94}"));
+    labels.insert(pair<string,string>("cat22","#splitline{|#eta|_{max} > 1.44, R_{9min} > 0.94}"));
+    labels.insert(pair<string,string>("cat23","#splitline{|#eta|_{max} > 1.44, R_{9min} < 0.94}"));
+    // labels.insert(pair<string,string>("all","All Categories Combined"));
   }
   /*
   else {
@@ -1573,44 +1617,51 @@ void makeParametricSignalModelPlots(string sigFitFileName, string outPathName, i
   }
   */
 
-	for (int c=0; c<=ncats; c++){
-		int cat = c;
-		// VH rejig
-		if (c == ncats-1-raiseVHdijet) cat = ncats-1;
-		if (c > ncats-1-raiseVHdijet && c < ncats) cat = c-1;
-		cout << "Raise: " << raiseVHdijet << endl;
-		cout << "Old cat: " << c << " Old cat name: " << labels[Form("cat%d",c)] << endl;
-		cout << "New cat: " << cat << " New cat name: " << labels[Form("cat%d",cat)] << endl;
-	}
+	///// for (int c=0; c<=ncats; c++){
+	///// 	int cat = c;
+	///// 	// VH rejig
+	///// 	if (c == ncats-1-raiseVHdijet) cat = ncats-1;
+	///// 	if (c > ncats-1-raiseVHdijet && c < ncats) cat = c-1;
+	///// 	cout << "Raise: " << raiseVHdijet << endl;
+	///// 	cout << "Old cat: " << c << " Old cat name: " << labels[Form("cat%d",c)] << endl;
+	///// 	cout << "New cat: " << cat << " New cat name: " << labels[Form("cat%d",cat)] << endl;
+	///// }
 
   map<string,RooDataSet*> dataSets;
   map<string,RooAddPdf*> pdfs;
+  
 
   if (doMIT){
     dataSets = getGlobeData(hggWS,ncats,m_hyp);
     pdfs = getMITPdfs(hggWS,ncats,is2011);
   }
   else {
-    dataSets = getGlobeData(hggWS,ncats,m_hyp);
-    pdfs = getGlobePdfs(hggWS,ncats); 
+	  dataSets = getGlobeData(hggWS,ncats,m_hyp,fold);
+	  pdfs = getGlobePdfs(hggWS,ncats,fold); 
   }
   
   printInfo(dataSets,pdfs);
-
+  int origcats = ncats;
+  if( fold != 0 ) { ncats += ncats/fold; }
   map<string,double> sigEffs;
   map<string,double> fwhms;
+  map<string,pair<double,double> > rngs;
   
   system(Form("mkdir -p %s",outPathName.c_str()));
   system(Form("rm -f %s/animation.gif",outPathName.c_str()));
   for (map<string,RooDataSet*>::iterator dataIt=dataSets.begin(); dataIt!=dataSets.end(); dataIt++){
     pair<double,double> thisSigRange = getEffSigma(mass,pdfs[dataIt->first],m_hyp-10.,m_hyp+10.);
+    cout << dataIt->first << endl;
     //pair<double,double> thisSigRange = getEffSigBinned(mass,pdf[dataIt->first],m_hyp-10.,m_hyp+10);
     vector<double> thisFWHMRange = getFWHM(mass,pdfs[dataIt->first],dataIt->second,m_hyp-10.,m_hyp+10.);
     sigEffs.insert(pair<string,double>(dataIt->first,(thisSigRange.second-thisSigRange.first)/2.));
     fwhms.insert(pair<string,double>(dataIt->first,thisFWHMRange[1]-thisFWHMRange[0]));
+    rngs.insert(pair<string,pair<double,double> >(dataIt->first,make_pair(thisFWHMRange[0],thisFWHMRange[1])));
     if (doCrossCheck) performClosure(mass,pdfs[dataIt->first],dataIt->second,Form("%s/closure_%s.pdf",outPathName.c_str(),dataIt->first.c_str()),m_hyp-10.,m_hyp+10.,thisSigRange.first,thisSigRange.second);
-    Plot(mass,dataIt->second,pdfs[dataIt->first],thisSigRange,thisFWHMRange,labels[dataIt->first],Form("%s/%s",outPathName.c_str(),dataIt->first.c_str()));
+    
+    /// Plot(mass,dataIt->second,pdfs[dataIt->first],thisSigRange,thisFWHMRange,labels[dataIt->first],Form("%s/%s",outPathName.c_str(),dataIt->first.c_str()));
   }
+  ncats = origcats;
   
   map<string,pair<double,double> > bkgVals;
   map<string,vector<double> > sigVals;
@@ -1644,17 +1695,19 @@ void makeParametricSignalModelPlots(string sigFitFileName, string outPathName, i
     for (int i=0; i<6; i++) sigTotal.push_back(0.);
     for (int cat=0; cat<ncats; cat++){
       if (doBkgAndData) {
-        bkgVals.insert(pair<string,pair<double,double> >(Form("cat%d",cat),bkgEvPerGeV(bkgWS,m_hyp,cat,bkgTotal,is2011)));
-        datVals.insert(pair<string,pair<double,double> >(Form("cat%d",cat),datEvents(bkgWS,m_hyp,cat,datTotal)));
-        sobVals.insert(pair<string,double>(Form("cat%d",cat),sobInEffSigma(hggWS,bkgWS,m_hyp,cat,sigEffs[Form("cat%d",cat)],sobTotal,splitVH,is2011)));
+	      pair<double,double> rng = ( fold == 0 ? rngs[Form("cat%d",cat)] : rngs[Form("cat%d",ncats+cat/fold)] );
+	      bkgVals.insert(pair<string,pair<double,double> >(Form("cat%d",cat),bkgEvPerGeV(bkgWS,m_hyp,cat,bkgTotal,is2011,rng)));
+	      /// datVals.insert(pair<string,pair<double,double> >(Form("cat%d",cat),datEvents(bkgWS,m_hyp,cat,datTotal)));
+	      datVals.insert(pair<string,pair<double,double> >(Form("cat%d",cat),datEvents(bkgWS,m_hyp,cat,datTotal,rng)));
+	      sobVals.insert(pair<string,double>(Form("cat%d",cat),sobInEffSigma(hggWS,bkgWS,m_hyp,cat,sigEffs[Form("cat%d",cat)],sobTotal,splitVH,is2011)));
       }
       sigVals.insert(pair<string,vector<double> >(Form("cat%d",cat),sigEvents(hggWS,m_hyp,cat,binnedSigFileName,sigTotal,splitVH,spinProc)));
     }
     bkgTotal.second = sqrt(bkgTotal.second);
-    bkgVals.insert(pair<string,pair<double,double> >("all",bkgTotal));
-    sigVals.insert(pair<string,vector<double> > ("all",sigTotal));
-    datVals.insert(pair<string,pair<double,double> >("all",datTotal));
-    sobVals.insert(pair<string,double>("all",sobTotal.first/(sobTotal.first+sobTotal.second)));
+    ///// bkgVals.insert(pair<string,pair<double,double> >("all",bkgTotal));
+    ///// sigVals.insert(pair<string,vector<double> > ("all",sigTotal));
+    ///// datVals.insert(pair<string,pair<double,double> >("all",datTotal));
+    ///// sobVals.insert(pair<string,double>("all",sobTotal.first/(sobTotal.first+sobTotal.second)));
     if (doBkgAndData) bkgFile->Close();
     
     FILE *file = fopen(Form("%s/table.tex",outPathName.c_str()),"w");
@@ -1669,7 +1722,7 @@ void makeParametricSignalModelPlots(string sigFitFileName, string outPathName, i
       fprintf(nfile,"Cat              SigY    ggh    vbf    wh     zh     tth   sEff  FWHM  FWHM/2.35  BkgEv/GeV    Data  DataEv/GeV\n");
       fprintf(nfile,"---------------------------------------------------------------------------------------------------------------\n");
     }
-    for (int c=0; c<=ncats; c++){
+    for (int c=0; c<ncats; c++){
 			int cat = c;
 			if (c == ncats-1-raiseVHdijet) cat = ncats-1;
 			if (c > ncats-1-raiseVHdijet && c < ncats) cat = c-1;

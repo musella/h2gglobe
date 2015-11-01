@@ -433,6 +433,7 @@ LoopAll::LoopAll(TTree *tree) :
   makeDummyTrees = false;
   usePFCiC = true;
   applyEcalIsoPresel = false;
+  skipPreselection = false;
   pfisoOffset=2.5;
   cicVersion="7TeV";
   pho_r9_cic = &pho_r9[0];

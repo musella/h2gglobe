@@ -126,7 +126,7 @@ class LoopAll {
 
   // Zee Validaton Flag
   bool runZeeValidation;
-  bool applyEcalIsoPresel;
+  bool applyEcalIsoPresel,skipPreselection;
   bool makeDummyTrees;
   Float_t * pho_r9_cic;
   std::string cicVersion;

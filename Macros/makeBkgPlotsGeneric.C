@@ -276,7 +276,7 @@ void makeBkgPlotsGeneric(std::string filebkg, std::string filesig="", const int 
 			onesigma = new TGraphAsymmErrors();
 			twosigma = new TGraphAsymmErrors();
 			TString name=Form("cat%d",cat);
-      doBandsFit(onesigma, twosigma, x, bkg, dynamic_cast<RooCurve*>(frame->getObject(frame->numItems()-1)), 
+			doBandsFit(onesigma, twosigma, x, bkg, dynamic_cast<RooCurve*>(frame->getObject(frame->numItems()-1)), 
 				   data, frame, name );
 		}
 		if( blind ) {
