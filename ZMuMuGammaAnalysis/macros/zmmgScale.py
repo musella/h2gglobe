@@ -5,8 +5,7 @@ import sys, os
 import array
 from math import sqrt, fabs
 
-def ytitle(h,tit):
-    h.GetYaxis().SetTitle( (tit % { "binw" : h.GetBinWidth(0), "xtitle" : h.GetXaxis().GetTitle() }).replace("(GeV)","") )
+from zmmgPlot import ytitle
 
 objs = []
 
